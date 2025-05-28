@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, MapPin, Star, Calendar, Edit, Save, Camera, Instagram, MessageSquare } from 'lucide-react';
@@ -251,7 +250,7 @@ const ProfilePage: React.FC = () => {
                     {isEditing ? (
                       <Select 
                         value={(formData as HumoristeProfile).experienceLevel || ''} 
-                        onValueChange={(value) => setFormData({ ...formData, experienceLevel: value })}
+                        onValueChange={(value: 'debutant' | 'intermediaire' | 'expert') => setFormData({ ...formData, experienceLevel: value })}
                       >
                         <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                           <SelectValue />
