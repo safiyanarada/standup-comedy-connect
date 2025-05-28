@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -10,20 +11,27 @@ import {
   Euro,
   Star,
   Eye,
-  Bell
+  Bell,
+  MessageSquare,
+  BarChart3,
+  User
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import DashboardSidebar from './DashboardSidebar';
-import EventsNearMe from './EventsNearMe';
-import ApplicationsStatus from './ApplicationsStatus';
+import OpportunitiesPage from './OpportunitiesPage';
+import MyApplicationsPage from './MyApplicationsPage';
+import MessagesPage from './MessagesPage';
+import ViralScorePage from './ViralScorePage';
+import StatsPage from './StatsPage';
+import ProfilePage from './ProfilePage';
 
 const HumoristeDashboard: React.FC = () => {
   const { user } = useAuth();
   const { getHumoristeStats, getAvailableEvents, getApplicationsByHumorist, getUnreadNotifications } = useData();
-  const [activeTab, setActiveTab] = useState<'overview' | 'opportunities' | 'applications'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'opportunities' | 'applications' | 'messages' | 'viral-score' | 'stats' | 'profile'>('overview');
 
   if (!user) return null;
 
@@ -42,9 +50,17 @@ const HumoristeDashboard: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'opportunities':
-        return <EventsNearMe />;
+        return <OpportunitiesPage />;
       case 'applications':
-        return <ApplicationsStatus />;
+        return <MyApplicationsPage />;
+      case 'messages':
+        return <MessagesPage />;
+      case 'viral-score':
+        return <ViralScorePage />;
+      case 'stats':
+        return <StatsPage />;
+      case 'profile':
+        return <ProfilePage />;
       default:
         return (
           <div className="space-y-8">
@@ -325,23 +341,27 @@ const HumoristeDashboard: React.FC = () => {
           </div>
 
           {/* Navigation Tabs */}
-          <div className="flex space-x-1 mb-8 bg-gray-800/50 rounded-lg p-1">
+          <div className="flex flex-wrap gap-2 mb-8 bg-gray-800/50 rounded-lg p-1">
             {[
               { id: 'overview', label: 'Vue d\'ensemble', icon: TrendingUp },
               { id: 'opportunities', label: 'Opportunités', icon: MapPin },
-              { id: 'applications', label: 'Mes candidatures', icon: Calendar }
+              { id: 'applications', label: 'Candidatures', icon: Calendar },
+              { id: 'messages', label: 'Messages', icon: MessageSquare },
+              { id: 'viral-score', label: 'Score Viral', icon: Zap },
+              { id: 'stats', label: 'Statistiques', icon: BarChart3 },
+              { id: 'profile', label: 'Profil', icon: User }
             ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setActiveTab(id as any)}
-                className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-md transition-all ${
+                className={`flex items-center justify-center space-x-2 py-3 px-4 rounded-md transition-all text-sm font-medium ${
                   activeTab === id
                     ? 'bg-pink-500 text-white'
                     : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
                 }`}
               >
                 <Icon className="w-4 h-4" />
-                <span className="font-medium">{label}</span>
+                <span className="hidden sm:inline">{label}</span>
               </button>
             ))}
           </div>
