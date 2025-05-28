@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 
@@ -66,11 +67,13 @@ interface DataContextType {
   updateEvent: (eventId: string, updates: Partial<Event>) => void;
   getEventsByOrganizer: (organizerId: string) => Event[];
   getAvailableEvents: (humoristId: string, city?: string) => Event[];
+  getEventById: (eventId: string) => Event | undefined;
   
   // Applications
   applications: Application[];
   applyToEvent: (eventId: string, message: string) => void;
   respondToApplication: (applicationId: string, status: 'accepted' | 'rejected') => void;
+  updateApplicationStatus: (applicationId: string, status: 'accepted' | 'rejected') => void;
   getApplicationsByEvent: (eventId: string) => Application[];
   getApplicationsByHumorist: (humoristId: string) => Application[];
   
@@ -84,6 +87,9 @@ interface DataContextType {
   notifications: Notification[];
   markNotificationAsRead: (notificationId: string) => void;
   getUnreadNotifications: (userId: string) => Notification[];
+  
+  // Users
+  getUserById: (userId: string) => any;
   
   // Stats
   getOrganizerStats: (organizerId: string) => {
@@ -102,6 +108,62 @@ interface DataContextType {
 }
 
 const DataContext = createContext<DataContextType | null>(null);
+
+// Mock users data for getUserById
+const mockUsers = [
+  {
+    id: '1',
+    email: 'demo@standup.com',
+    firstName: 'Demo',
+    lastName: 'User',
+    userType: 'humoriste',
+    profile: {
+      stageName: 'Demo Comic',
+      city: 'Paris',
+      bio: 'Humoriste passionné de stand-up !',
+      mobilityZone: 50,
+      experienceLevel: 'intermediaire',
+      socialLinks: {
+        instagram: '@democomic',
+        tiktok: '@democomic'
+      },
+      genres: ['observationnel', 'stand-up'],
+      availability: {
+        weekdays: true,
+        weekends: true,
+        evenings: true
+      }
+    }
+  },
+  {
+    id: 'org1',
+    email: 'club@paris.com',
+    firstName: 'Comedy',
+    lastName: 'Club',
+    userType: 'organisateur',
+    profile: {
+      companyName: 'Comedy Club Paris',
+      city: 'Paris',
+      description: 'Le meilleur club de comédie de Paris',
+      venueTypes: ['theatre', 'bar'],
+      eventFrequency: 'weekly'
+    }
+  },
+  {
+    id: 'org2',
+    email: 'cafe@comedie.com',
+    firstName: 'Café',
+    lastName: 'Comédie',
+    userType: 'organisateur',
+    profile: {
+      companyName: 'Café de la Comédie',
+      city: 'Paris',
+      description: 'Café-théâtre convivial',
+      venueTypes: ['cafe'],
+      eventFrequency: 'monthly'
+    }
+  }
+];
 
 // Données mockées pour la démo
 const mockEvents: Event[] = [
@@ -161,21 +223,36 @@ const mockApplications: Application[] = [
 ];
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { user, users } = useAuth();
+  const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>(mockEvents);
   const [applications, setApplications] = useState<Application[]>(mockApplications);
   const [messages, setMessages] = useState<Message[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
+  // Get event by ID
+  const getEventById = (eventId: string): Event | undefined => {
+    return events.find(event => event.id === eventId);
+  };
+
+  // Get user by ID
+  const getUserById = (userId: string) => {
+    return mockUsers.find(user => user.id === userId);
+  };
+
   // Créer un événement
   const createEvent = (eventData: Omit<Event, 'id' | 'organizerId' | 'organizerName' | 'applications' | 'createdAt'>) => {
     if (!user || user.userType !== 'organisateur') return;
+    
+    const organizer = getUserById(user.id);
+    const organizerName = organizer?.userType === 'organisateur' && 'companyName' in organizer.profile 
+      ? organizer.profile.companyName || `${organizer.firstName} ${organizer.lastName}`
+      : `${user.firstName} ${user.lastName}`;
     
     const newEvent: Event = {
       ...eventData,
       id: `event_${Date.now()}`,
       organizerId: user.id,
-      organizerName: user.profile.companyName || `${user.firstName} ${user.lastName}`,
+      organizerName,
       applications: [],
       createdAt: new Date().toISOString()
     };
@@ -201,12 +278,16 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const applyToEvent = (eventId: string, message: string) => {
     if (!user || user.userType !== 'humoriste') return;
     
+    const stageName = user.userType === 'humoriste' && 'stageName' in user.profile 
+      ? user.profile.stageName 
+      : undefined;
+    
     const newApplication: Application = {
       id: `app_${Date.now()}`,
       eventId,
       humoristId: user.id,
       humoristName: `${user.firstName} ${user.lastName}`,
-      stageName: user.profile.stageName,
+      stageName,
       message,
       status: 'pending',
       appliedAt: new Date().toISOString()
@@ -241,6 +322,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Répondre à une candidature
   const respondToApplication = (applicationId: string, status: 'accepted' | 'rejected') => {
+    updateApplicationStatus(applicationId, status);
+  };
+
+  // Update application status
+  const updateApplicationStatus = (applicationId: string, status: 'accepted' | 'rejected') => {
     setApplications(prev => prev.map(app => 
       app.id === applicationId 
         ? { ...app, status, respondedAt: new Date().toISOString() }
@@ -338,7 +424,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Stats
   const getOrganizerStats = (organizerId: string) => {
     const organizerEvents = events.filter(event => event.organizerId === organizerId);
-    const organizer = users.find(u => u.id === organizerId);
+    const organizer = getUserById(organizerId);
     
     return {
       totalEvents: organizerEvents.length,
@@ -367,26 +453,17 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     ));
   };
 
-  const getUserDisplayName = (userId: string) => {
-    const user = users.find(u => u.id === userId);
-    if (!user) return 'Utilisateur inconnu';
-    
-    if (user.userType === 'humoriste' && 'stageName' in user.profile && user.profile.stageName) {
-      return user.profile.stageName;
-    }
-    
-    return `${user.firstName} ${user.lastName}`;
-  };
-
   const value: DataContextType = {
     events,
     createEvent,
     updateEvent,
     getEventsByOrganizer,
     getAvailableEvents,
+    getEventById,
     applications,
     applyToEvent,
     respondToApplication,
+    updateApplicationStatus,
     getApplicationsByEvent,
     getApplicationsByHumorist,
     messages,
@@ -396,6 +473,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     notifications,
     markNotificationAsRead,
     getUnreadNotifications,
+    getUserById,
     getOrganizerStats,
     getHumoristeStats
   };

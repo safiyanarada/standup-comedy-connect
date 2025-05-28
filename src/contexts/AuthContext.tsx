@@ -4,6 +4,7 @@ import { User, LoginCredentials, SignupData } from '@/types/auth';
 
 interface AuthContextType {
   user: User | null;
+  users: User[]; // Add users array
   loading: boolean;
   error: string | null;
   login: (credentials: LoginCredentials) => Promise<void>;
@@ -22,13 +23,9 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Mock data pour la démo
-  const mockUser: User = {
+// Mock users data
+const mockUsers: User[] = [
+  {
     id: '1',
     email: 'demo@standup.com',
     firstName: 'Demo',
@@ -64,7 +61,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
     createdAt: '2024-01-01T00:00:00Z',
     lastLoginAt: new Date().toISOString()
-  };
+  }
+];
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [users] = useState<User[]>(mockUsers); // Add users state
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Mock data pour la démo
+  const mockUser: User = mockUsers[0];
 
   useEffect(() => {
     const initAuth = async () => {
@@ -189,6 +196,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const value: AuthContextType = {
     user,
+    users, // Add users to the context value
     loading,
     error,
     login,
