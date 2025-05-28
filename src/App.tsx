@@ -5,10 +5,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { DataProvider } from "@/contexts/DataContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import LoginPage from "@/components/auth/LoginPage";
 import SignupPage from "@/components/auth/SignupPage";
+import HumoristeDashboard from "@/components/dashboard/HumoristeDashboard";
+import OrganisateurDashboard from "@/components/dashboard/OrganisateurDashboard";
 
 const queryClient = new QueryClient();
 
@@ -31,58 +34,8 @@ const DashboardRedirect = () => {
     return <Navigate to="/login" replace />;
   }
 
-  // Redirection vers un dashboard simple pour l'instant
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black flex items-center justify-center p-4">
-      <div className="max-w-2xl w-full text-center">
-        <div className={`w-24 h-24 mx-auto mb-8 rounded-3xl flex items-center justify-center text-4xl ${
-          user.userType === 'humoriste' 
-            ? 'bg-gradient-to-r from-pink-500 to-red-500' 
-            : 'bg-gradient-to-r from-blue-500 to-cyan-500'
-        }`}>
-          {user.userType === 'humoriste' ? '🎤' : '🎪'}
-        </div>
-        
-        <h1 className="text-4xl font-black text-white mb-4">
-          Bienvenue {user.firstName} ! 🎉
-        </h1>
-        
-        <p className="text-xl text-gray-300 mb-8">
-          {user.userType === 'humoriste' 
-            ? 'Ton dashboard humoriste arrive bientôt !' 
-            : 'Ton dashboard organisateur arrive bientôt !'}
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="p-6 bg-gray-800/50 rounded-2xl backdrop-blur-sm">
-            <div className="text-3xl mb-2">⚡</div>
-            <div className="text-lg font-semibold text-white">Score Viral</div>
-            <div className="text-2xl font-bold text-pink-400">{user.stats.viralScore}</div>
-          </div>
-          <div className="p-6 bg-gray-800/50 rounded-2xl backdrop-blur-sm">
-            <div className="text-3xl mb-2">🎭</div>
-            <div className="text-lg font-semibold text-white">Événements</div>
-            <div className="text-2xl font-bold text-cyan-400">{user.stats.totalEvents}</div>
-          </div>
-          <div className="p-6 bg-gray-800/50 rounded-2xl backdrop-blur-sm">
-            <div className="text-3xl mb-2">⭐</div>
-            <div className="text-lg font-semibold text-white">Note moyenne</div>
-            <div className="text-2xl font-bold text-yellow-400">{user.stats.averageRating}/5</div>
-          </div>
-        </div>
-
-        <button
-          onClick={() => {
-            localStorage.removeItem('standup_token');
-            window.location.href = '/';
-          }}
-          className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
-        >
-          Se déconnecter
-        </button>
-      </div>
-    </div>
-  );
+  // Redirection vers le bon dashboard
+  return <Navigate to={`/dashboard/${user.userType}`} replace />;
 };
 
 // Composant de protection des routes
@@ -116,10 +69,19 @@ const AppContent = () => {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         
-        {/* Routes protégées */}
-        <Route path="/dashboard" element={
+        {/* Redirection générale vers dashboard */}
+        <Route path="/dashboard" element={<DashboardRedirect />} />
+        
+        {/* Dashboards spécifiques */}
+        <Route path="/dashboard/humoriste" element={
           <ProtectedRoute>
-            <DashboardRedirect />
+            <HumoristeDashboard />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/dashboard/organisateur" element={
+          <ProtectedRoute>
+            <OrganisateurDashboard />
           </ProtectedRoute>
         } />
         
@@ -134,9 +96,11 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <AppContent />
+        <DataProvider>
+          <Toaster />
+          <Sonner />
+          <AppContent />
+        </DataProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

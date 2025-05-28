@@ -70,7 +70,7 @@ const SignupPage: React.FC = () => {
     if (!userType || !passwordValidation.isValid) return;
 
     try {
-      await signup({ ...formData, userType }, userType);
+      await signup({ ...formData, userType });
       navigate('/dashboard');
     } catch (err) {
       // Erreur gérée dans le context
