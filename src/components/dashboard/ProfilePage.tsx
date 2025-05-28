@@ -16,7 +16,7 @@ import { HumoristeProfile, OrganisateurProfile } from '@/types/auth';
 const ProfilePage: React.FC = () => {
   const { user, updateProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState(user?.profile || {});
+  const [formData, setFormData] = useState(user?.profile || {} as HumoristeProfile | OrganisateurProfile);
   const [isLoading, setIsLoading] = useState(false);
 
   if (!user) return null;
