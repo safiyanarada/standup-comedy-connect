@@ -359,7 +359,7 @@ const ProfilePage: React.FC = () => {
                     <span className="text-white">{label}</span>
                     {isEditing ? (
                       <Switch
-                        checked={(formData as HumoristeProfile).availability?.[key as keyof typeof (formData as HumoristeProfile).availability] || false}
+                        checked={((formData as HumoristeProfile).availability?.[key as keyof HumoristeProfile['availability']]) || false}
                         onCheckedChange={(checked) => 
                           setFormData({
                             ...formData,
@@ -369,11 +369,11 @@ const ProfilePage: React.FC = () => {
                       />
                     ) : (
                       <span className={`px-2 py-1 rounded-full text-xs ${
-                        humoristeProfile?.availability?.[key as keyof typeof humoristeProfile.availability] 
+                        humoristeProfile?.availability?.[key as keyof HumoristeProfile['availability']]
                           ? 'bg-green-500/20 text-green-400' 
                           : 'bg-red-500/20 text-red-400'
                       }`}>
-                        {humoristeProfile?.availability?.[key as keyof typeof humoristeProfile.availability] ? 'Disponible' : 'Non disponible'}
+                        {humoristeProfile?.availability?.[key as keyof HumoristeProfile['availability']] ? 'Disponible' : 'Non disponible'}
                       </span>
                     )}
                   </div>
