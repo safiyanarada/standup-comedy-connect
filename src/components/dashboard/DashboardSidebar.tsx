@@ -74,7 +74,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userType }) => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-white font-medium truncate">
-                {userType === 'humoriste' && user?.profile.stageName 
+                {userType === 'humoriste' && user?.userType === 'humoriste' && 'stageName' in user.profile && user.profile.stageName 
                   ? user.profile.stageName 
                   : `${user?.firstName} ${user?.lastName}`}
               </p>

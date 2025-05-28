@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 
@@ -92,6 +91,7 @@ interface DataContextType {
     totalApplications: number;
     averageResponseTime: number;
     completedEvents: number;
+    companyName?: string;
   };
   getHumoristeStats: (humoristId: string) => {
     totalApplications: number;
@@ -161,7 +161,7 @@ const mockApplications: Application[] = [
 ];
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, users } = useAuth();
   const [events, setEvents] = useState<Event[]>(mockEvents);
   const [applications, setApplications] = useState<Application[]>(mockApplications);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -337,14 +337,15 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Stats
   const getOrganizerStats = (organizerId: string) => {
-    const organizerEvents = getEventsByOrganizer(organizerId);
-    const totalApplications = organizerEvents.reduce((sum, event) => sum + event.applications.length, 0);
+    const organizerEvents = events.filter(event => event.organizerId === organizerId);
+    const organizer = users.find(u => u.id === organizerId);
     
     return {
       totalEvents: organizerEvents.length,
-      totalApplications,
-      averageResponseTime: 24, // En heures - mockée
-      completedEvents: organizerEvents.filter(e => e.status === 'completed').length
+      totalApplications: organizerEvents.reduce((sum, event) => sum + event.applications.length, 0),
+      completedEvents: organizerEvents.filter(event => event.status === 'completed').length,
+      averageResponseTime: 2,
+      companyName: organizer?.userType === 'organisateur' && 'companyName' in organizer.profile ? organizer.profile.companyName : undefined
     };
   };
 
@@ -364,6 +365,17 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setEvents(prev => prev.map(event => 
       event.id === eventId ? { ...event, ...updates } : event
     ));
+  };
+
+  const getUserDisplayName = (userId: string) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return 'Utilisateur inconnu';
+    
+    if (user.userType === 'humoriste' && 'stageName' in user.profile && user.profile.stageName) {
+      return user.profile.stageName;
+    }
+    
+    return `${user.firstName} ${user.lastName}`;
   };
 
   const value: DataContextType = {

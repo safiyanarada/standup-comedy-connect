@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -298,7 +297,7 @@ const HumoristeDashboard: React.FC = () => {
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold mb-2">
-                Salut {user.profile.stageName || user.firstName} ! 🎤
+                Salut {user.userType === 'humoriste' && 'stageName' in user.profile && user.profile.stageName || user.firstName} ! 🎤
               </h1>
               <p className="text-gray-400">
                 Prêt à faire vibrer les foules ?
