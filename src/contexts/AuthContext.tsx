@@ -1,6 +1,6 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, LoginCredentials, SignupData } from '@/types/auth';
+import { User, LoginCredentials, SignupData, HumoristeProfile, OrganisateurProfile } from '@/types/auth';
+import { getCityCoordinates } from '@/lib/geolocation';
 
 interface AuthContextType {
   user: User | null;
@@ -34,6 +34,7 @@ const mockUsers: User[] = [
     profile: {
       stageName: 'Demo Comic',
       city: 'Paris',
+      coordinates: getCityCoordinates('Paris'),
       bio: 'Humoriste passionné de stand-up !',
       mobilityZone: 50,
       experienceLevel: 'intermediaire',
@@ -61,30 +62,65 @@ const mockUsers: User[] = [
     avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
     createdAt: '2024-01-01T00:00:00Z',
     lastLoginAt: new Date().toISOString()
+  },
+  {
+    id: '2',
+    email: 'org@standup.com',
+    firstName: 'Sophie',
+    lastName: 'Martin',
+    userType: 'organisateur',
+    profile: {
+      companyName: 'Comedy Club Paris',
+      city: 'Paris',
+      coordinates: getCityCoordinates('Paris'),
+      description: 'Le meilleur club de comédie de Paris. Nous organisons des soirées stand-up 3 fois par semaine.',
+      website: 'https://comedyclubparis.fr',
+      venueTypes: ['club', 'theatre'],
+      averageBudget: {
+        min: 50,
+        max: 200
+      },
+      eventFrequency: 'weekly'
+    },
+    stats: {
+      totalEvents: 45,
+      totalRevenue: 8500,
+      averageRating: 4.8,
+      viralScore: 920,
+      profileViews: 2100,
+      lastActivity: new Date().toISOString()
+    },
+    onboardingCompleted: true,
+    emailVerified: true,
+    avatarUrl: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+    createdAt: '2024-01-01T00:00:00Z',
+    lastLoginAt: new Date().toISOString()
   }
 ];
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [users] = useState<User[]>(mockUsers); // Add users state
+  const [users] = useState<User[]>(mockUsers);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Mock data pour la démo
-  const mockUser: User = mockUsers[0];
 
   useEffect(() => {
     const initAuth = async () => {
       try {
         const token = localStorage.getItem('standup_token');
-        if (token) {
+        const userId = localStorage.getItem('standup_user_id');
+        if (token && userId) {
           // Simulation d'une vérification de token
           await new Promise(resolve => setTimeout(resolve, 1000));
-          setUser(mockUser);
+          const savedUser = mockUsers.find(u => u.id === userId);
+          if (savedUser) {
+            setUser(savedUser);
+          }
         }
       } catch (err) {
         console.error('Auth init error:', err);
         localStorage.removeItem('standup_token');
+        localStorage.removeItem('standup_user_id');
       } finally {
         setLoading(false);
       }
@@ -101,12 +137,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Simulation d'une connexion
       await new Promise(resolve => setTimeout(resolve, 1500));
       
+      // Vérifier les identifiants pour les comptes de test
+      let userToLogin = null;
+      
       if (credentials.email === 'demo@standup.com' && credentials.password === 'Demo123!') {
-        const token = 'demo_token_' + Date.now();
-        localStorage.setItem('standup_token', token);
-        setUser(mockUser);
+        userToLogin = mockUsers.find(u => u.email === 'demo@standup.com');
+      } else if (credentials.email === 'org@standup.com' && credentials.password === 'Org123!') {
+        userToLogin = mockUsers.find(u => u.email === 'org@standup.com');
       } else {
         throw new Error('Identifiants incorrects');
+      }
+
+      if (userToLogin) {
+        const token = 'token_' + Date.now();
+        localStorage.setItem('standup_token', token);
+        localStorage.setItem('standup_user_id', userToLogin.id);
+        setUser(userToLogin);
+      } else {
+        throw new Error('Utilisateur non trouvé');
       }
 
     } catch (err) {
@@ -126,7 +174,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       const newUser: User = {
-        ...mockUser,
+        ...mockUsers[0],
         id: 'new_' + Date.now(),
         email: data.email,
         firstName: data.firstName,
@@ -136,6 +184,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         profile: data.userType === 'humoriste' ? {
           stageName: data.stageName,
           city: data.city,
+          coordinates: getCityCoordinates(data.city),
           bio: '',
           mobilityZone: 30,
           experienceLevel: 'debutant',
@@ -148,6 +197,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } : {
           companyName: data.companyName,
           city: data.city,
+          coordinates: getCityCoordinates(data.city),
           description: '',
           venueTypes: [],
           eventFrequency: 'monthly'
@@ -168,6 +218,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('standup_token');
+    localStorage.removeItem('standup_user_id');
     setUser(null);
   };
 

@@ -1,3 +1,4 @@
+import { Coordinates } from '@/lib/geolocation';
 
 export interface User {
   id: string;
@@ -17,6 +18,7 @@ export interface User {
 export interface HumoristeProfile {
   stageName?: string;
   city: string;
+  coordinates?: Coordinates;
   bio?: string;
   mobilityZone: number;
   experienceLevel: 'debutant' | 'intermediaire' | 'expert';
@@ -35,8 +37,12 @@ export interface HumoristeProfile {
 export interface OrganisateurProfile {
   companyName?: string;
   city: string;
+  coordinates?: Coordinates;
   description?: string;
   website?: string;
+  phone?: string;
+  venueAddress?: string;
+  venuePostalCode?: string;
   venueTypes: string[];
   averageBudget?: {
     min: number;
@@ -67,6 +73,7 @@ export interface SignupData {
   phone?: string;
   userType: 'humoriste' | 'organisateur';
   city: string;
+  coordinates?: Coordinates;
   stageName?: string;
   companyName?: string;
 }
