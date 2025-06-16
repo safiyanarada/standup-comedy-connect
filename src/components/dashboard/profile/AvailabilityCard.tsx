@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Calendar } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -19,9 +18,8 @@ const AvailabilityCard: React.FC<AvailabilityCardProps> = ({
   onFormDataChange
 }) => {
   const availabilityOptions = [
-    { key: 'weekdays', label: 'Semaine (Lun-Ven)' },
-    { key: 'weekends', label: 'Week-ends' },
-    { key: 'evenings', label: 'Soirées' }
+    { key: 'weekdays', label: 'Semaine (Lun-Jeu)' },
+    { key: 'weekends', label: 'Week-end (Ven-Dim)' },
   ];
 
   const handleAvailabilityChange = (key: string, checked: boolean) => {

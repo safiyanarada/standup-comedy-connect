@@ -1,10 +1,10 @@
-
 import React from 'react';
 import { Camera, Instagram, MessageSquare } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User, HumoristeProfile, OrganisateurProfile } from '@/types/auth';
+import { useData } from '@/contexts/DataContext';
 
 interface ProfileSidebarProps {
   user: User;
@@ -22,6 +22,10 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
   const isHumoriste = user.userType === 'humoriste';
   const humoristeProfile = isHumoriste ? user.profile as HumoristeProfile : null;
   const organisateurProfile = !isHumoriste ? user.profile as OrganisateurProfile : null;
+
+  const { getOrganizerStats } = useData();
+
+  const organizerStats = isHumoriste ? null : getOrganizerStats(user.id);
 
   const handleSocialLinkChange = (platform: 'instagram' | 'tiktok', value: string) => {
     if (isHumoriste) {
@@ -118,7 +122,7 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
             <span className="text-gray-400">
               {isHumoriste ? 'Spectacles' : 'Événements créés'}
             </span>
-            <span className="text-white font-semibold">{user.stats?.totalEvents || 0}</span>
+            <span className="text-white font-semibold">{isHumoriste ? user.stats?.totalEvents || 0 : organizerStats?.totalEvents || 0}</span>
           </div>
           {isHumoriste && (
             <>

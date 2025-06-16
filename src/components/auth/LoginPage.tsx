@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
@@ -68,18 +67,6 @@ const LoginPage: React.FC = () => {
             Connecte-toi pour accéder à ton tableau de bord
           </p>
         </div>
-
-        {/* Demo credentials */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="mb-6 p-4 bg-blue-500/20 border border-blue-500/30 rounded-lg text-blue-200 text-sm"
-        >
-          <div className="font-medium mb-2">🎯 Compte de démo :</div>
-          <div>Email : demo@standup.com</div>
-          <div>Mot de passe : Demo123!</div>
-        </motion.div>
 
         {/* Form */}
         <motion.form 

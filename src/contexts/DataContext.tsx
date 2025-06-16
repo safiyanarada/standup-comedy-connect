@@ -1,43 +1,10 @@
-
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import { User, HumoristeProfile, Location } from '@/types/auth'; // Import User and HumoristeProfile types
+import { Event, Application } from '@/types/events'; // Ensure Event and Application are imported
+import { toast } from 'react-hot-toast';
 
-// Types pour les événements
-export interface Event {
-  id: string;
-  organizerId: string;
-  organizerName: string;
-  title: string;
-  description: string;
-  venue: string;
-  address: string;
-  city: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  fee: number;
-  maxPerformers: number;
-  status: 'draft' | 'published' | 'full' | 'completed' | 'cancelled';
-  requirements: string;
-  eventType: 'open-mic' | 'show' | 'private' | 'festival';
-  applications: Application[];
-  createdAt: string;
-}
-
-// Types pour les candidatures
-export interface Application {
-  id: string;
-  eventId: string;
-  humoristId: string;
-  humoristName: string;
-  stageName?: string;
-  message: string;
-  status: 'pending' | 'viewed' | 'accepted' | 'rejected';
-  appliedAt: string;
-  respondedAt?: string;
-}
-
-// Types pour les messages
+// Types for messages and notifications can stay here if they are only used in this context
 export interface Message {
   id: string;
   fromId: string;
@@ -48,7 +15,6 @@ export interface Message {
   read: boolean;
 }
 
-// Types pour les notifications
 export interface Notification {
   id: string;
   userId: string;
@@ -61,21 +27,28 @@ export interface Notification {
 }
 
 interface DataContextType {
+  // States
+  isLoading: boolean;
+  error: string | null;
+
   // Events
   events: Event[];
-  createEvent: (eventData: Omit<Event, 'id' | 'organizerId' | 'organizerName' | 'applications' | 'createdAt'>) => void;
-  updateEvent: (eventId: string, updates: Partial<Event>) => void;
+  createEvent: (eventData: Omit<Event, 'id' | 'organizerId' | 'organizerName' | 'applications' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateEvent: (eventId: string, updates: Partial<Event>) => Promise<void>;
+  deleteEvent: (eventId: string) => Promise<void>;
   getEventsByOrganizer: (organizerId: string) => Event[];
   getAvailableEvents: (humoristId: string, city?: string) => Event[];
   getEventById: (eventId: string) => Event | undefined;
+  fetchEvents: () => Promise<void>;
   
   // Applications
   applications: Application[];
-  applyToEvent: (eventId: string, message: string) => void;
-  respondToApplication: (applicationId: string, status: 'accepted' | 'rejected') => void;
-  updateApplicationStatus: (applicationId: string, status: 'accepted' | 'rejected') => void;
+  applyToEvent: (eventId: string, humoristId: string, message: string) => Promise<void>;
+  respondToApplication: (applicationId: string, status: 'accepted' | 'rejected') => Promise<void>;
+  updateApplicationStatus: (applicationId: string, status: 'accepted' | 'rejected') => Promise<void>;
   getApplicationsByEvent: (eventId: string) => Application[];
   getApplicationsByHumorist: (humoristId: string) => Application[];
+  fetchApplications: () => Promise<void>;
   
   // Messages
   messages: Message[];
@@ -89,7 +62,7 @@ interface DataContextType {
   getUnreadNotifications: (userId: string) => Notification[];
   
   // Users
-  getUserById: (userId: string) => any;
+  getUserById: (userId: string) => User | undefined;
   
   // Stats
   getOrganizerStats: (organizerId: string) => {
@@ -109,270 +82,308 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | null>(null);
 
-// Mock users data for getUserById
-const mockUsers = [
-  {
-    id: '1',
-    email: 'demo@standup.com',
-    firstName: 'Demo',
-    lastName: 'User',
-    userType: 'humoriste',
-    profile: {
-      stageName: 'Demo Comic',
-      city: 'Paris',
-      bio: 'Humoriste passionné de stand-up !',
-      mobilityZone: 50,
-      experienceLevel: 'intermediaire',
-      socialLinks: {
-        instagram: '@democomic',
-        tiktok: '@democomic'
-      },
-      genres: ['observationnel', 'stand-up'],
-      availability: {
-        weekdays: true,
-        weekends: true,
-        evenings: true
-      }
-    }
-  },
-  {
-    id: 'org1',
-    email: 'club@paris.com',
-    firstName: 'Comedy',
-    lastName: 'Club',
-    userType: 'organisateur',
-    profile: {
-      companyName: 'Comedy Club Paris',
-      city: 'Paris',
-      description: 'Le meilleur club de comédie de Paris',
-      venueTypes: ['theatre', 'bar'],
-      eventFrequency: 'weekly'
-    }
-  },
-  {
-    id: 'org2',
-    email: 'cafe@comedie.com',
-    firstName: 'Café',
-    lastName: 'Comédie',
-    userType: 'organisateur',
-    profile: {
-      companyName: 'Café de la Comédie',
-      city: 'Paris',
-      description: 'Café-théâtre convivial',
-      venueTypes: ['cafe'],
-      eventFrequency: 'monthly'
-    }
-  }
-];
+// Remove mock users data as it will be fetched from the backend
 
-// Données mockées pour la démo
-const mockEvents: Event[] = [
-  {
-    id: '1',
-    organizerId: 'org1',
-    organizerName: 'Comedy Club Paris',
-    title: 'Soirée Open Mic du Jeudi',
-    description: 'Venez tester vos nouveaux textes dans une ambiance détendue !',
-    venue: 'Le Petit Théâtre',
-    address: '15 rue de la Gaîté',
-    city: 'Paris',
-    date: '2024-12-05',
-    startTime: '20:00',
-    endTime: '22:30',
-    fee: 50,
-    maxPerformers: 8,
-    status: 'published',
-    requirements: 'Maximum 7 minutes par passage',
-    eventType: 'open-mic',
-    applications: [],
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: '2',
-    organizerId: 'org2',
-    organizerName: 'Café de la Comédie',
-    title: 'Spectacle de Noël',
-    description: 'Spectacle spécial pour les fêtes de fin d\'année',
-    venue: 'Café de la Comédie',
-    address: '32 boulevard Saint-Germain',
-    city: 'Paris',
-    date: '2024-12-20',
-    startTime: '19:30',
-    endTime: '21:30',
-    fee: 150,
-    maxPerformers: 5,
-    status: 'published',
-    requirements: 'Spectacle familial, pas de contenu explicite',
-    eventType: 'show',
-    applications: [],
-    createdAt: new Date().toISOString()
-  }
-];
+// Remove mockEvents and mockApplications as they will be fetched from the backend
 
-const mockApplications: Application[] = [
-  {
-    id: 'app1',
-    eventId: '1',
-    humoristId: '1',
-    humoristName: 'Demo Comic',
-    stageName: 'Demo Comic',
-    message: 'Salut ! J\'aimerais participer à votre open mic. J\'ai 2 ans d\'expérience et je fais principalement de l\'observationnel.',
-    status: 'pending',
-    appliedAt: new Date().toISOString()
-  }
-];
+// Remove getInitialEvents and getInitialApplications
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
-  const [events, setEvents] = useState<Event[]>(mockEvents);
-  const [applications, setApplications] = useState<Application[]>(mockApplications);
+  const { user, users, token } = useAuth();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Get event by ID
+  const API_BASE_URL = 'http://localhost:5000/api'; // Define your backend API URL
+
+  const authHeaders = useCallback(() => ({
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+  }), [token]);
+
+  // Fetch Events from backend
+  const fetchEvents = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/events`, {
+        headers: authHeaders()
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data: Event[] = await response.json();
+      setEvents(data);
+    } catch (err: any) {
+      console.error('Error fetching events:', err);
+      setError(err.message || 'Failed to fetch events');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [authHeaders]);
+
+  // Fetch Applications from backend
+  const fetchApplications = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/applications`, {
+        headers: authHeaders()
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data: Application[] = await response.json();
+      setApplications(data);
+    } catch (err: any) {
+      console.error('Error fetching applications:', err);
+      setError(err.message || 'Failed to fetch applications');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [authHeaders]);
+
+  // Initial data loading on mount
+  useEffect(() => {
+    fetchEvents();
+    fetchApplications();
+  }, [fetchEvents, fetchApplications]);
+
+  // Remove local storage effects
+  useEffect(() => {
+    console.log('Removed local storage saving for events.');
+  }, [events]);
+
+  useEffect(() => {
+    console.log('Removed local storage saving for applications.');
+  }, [applications]);
+
+  // Debug effect (can be removed later)
+  useEffect(() => {
+    console.log('=== DataProvider Debug ===');
+    console.log('User:', user);
+    console.log('Events:', events);
+    console.log('Applications:', applications);
+    console.log('Loading:', isLoading);
+    console.log('Error:', error);
+  }, [user, events, applications, isLoading, error]);
+
   const getEventById = (eventId: string): Event | undefined => {
     return events.find(event => event.id === eventId);
   };
 
-  // Get user by ID
-  const getUserById = (userId: string) => {
-    return mockUsers.find(user => user.id === userId);
+  const getUserById = (userId: string): User | undefined => {
+    const foundUser = users.find(u => u.id === userId);
+    console.log('getUserById:', { userId, foundUser });
+    return foundUser;
   };
 
-  // Créer un événement
-  const createEvent = (eventData: Omit<Event, 'id' | 'organizerId' | 'organizerName' | 'applications' | 'createdAt'>) => {
-    if (!user || user.userType !== 'organisateur') return;
-    
-    const organizer = getUserById(user.id);
-    const organizerName = organizer?.userType === 'organisateur' && 'companyName' in organizer.profile 
-      ? organizer.profile.companyName || `${organizer.firstName} ${organizer.lastName}`
-      : `${user.firstName} ${user.lastName}`;
-    
-    const newEvent: Event = {
-      ...eventData,
-      id: `event_${Date.now()}`,
-      organizerId: user.id,
-      organizerName,
-      applications: [],
-      createdAt: new Date().toISOString()
-    };
-    
-    setEvents(prev => [newEvent, ...prev]);
-    
-    // Créer une notification pour les humoristes de la zone
-    const notification: Notification = {
-      id: `notif_${Date.now()}`,
-      userId: 'all_humoristes', // Pour tous les humoristes
-      type: 'new_event',
-      title: 'Nouvel événement disponible !',
-      message: `${newEvent.title} - ${newEvent.city}`,
-      read: false,
-      createdAt: new Date().toISOString(),
-      relatedId: newEvent.id
-    };
-    
-    setNotifications(prev => [notification, ...prev]);
-  };
+  // Create Event
+  const createEvent = async (eventData: Omit<Event, 'id' | 'organizerId' | 'organizerName' | 'applications' | 'createdAt' | 'updatedAt'>) => {
+    if (!user || user.userType !== 'organisateur') {
+      setError('Unauthorized: Only organizers can create events.');
+      return;
+    }
 
-  // Candidater à un événement
-  const applyToEvent = (eventId: string, message: string) => {
-    if (!user || user.userType !== 'humoriste') return;
-    
-    const stageName = user.userType === 'humoriste' && 'stageName' in user.profile 
-      ? user.profile.stageName 
-      : undefined;
-    
-    const newApplication: Application = {
-      id: `app_${Date.now()}`,
-      eventId,
-      humoristId: user.id,
-      humoristName: `${user.firstName} ${user.lastName}`,
-      stageName,
-      message,
-      status: 'pending',
-      appliedAt: new Date().toISOString()
-    };
-    
-    setApplications(prev => [newApplication, ...prev]);
-    
-    // Mettre à jour l'événement
-    setEvents(prev => prev.map(event => 
-      event.id === eventId 
-        ? { ...event, applications: [...event.applications, newApplication] }
-        : event
-    ));
-    
-    // Créer notification pour l'organisateur
-    const event = events.find(e => e.id === eventId);
-    if (event) {
-      const notification: Notification = {
-        id: `notif_${Date.now()}`,
-        userId: event.organizerId,
-        type: 'application_received',
-        title: 'Nouvelle candidature !',
-        message: `${user.firstName} ${user.lastName} a candidaté pour "${event.title}"`,
-        read: false,
-        createdAt: new Date().toISOString(),
-        relatedId: newApplication.id
-      };
-      
-      setNotifications(prev => [notification, ...prev]);
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await fetch(`${API_BASE_URL}/events`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          ...eventData,
+          organizerId: user.id, // Ensure organizerId is sent
+          organizerName: user.firstName + ' ' + user.lastName, // Ensure organizerName is sent
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create event');
+      }
+      await fetchEvents(); // Re-fetch events after creation
+      toast.success(`Événement '${eventData.title}' créé à ${eventData.location.city} !`);
+    } catch (err: any) {
+      console.error('Error creating event:', err);
+      setError(err.message);
+      toast.error("Erreur lors de la création de l'événement.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Répondre à une candidature
-  const respondToApplication = (applicationId: string, status: 'accepted' | 'rejected') => {
-    updateApplicationStatus(applicationId, status);
-  };
+  // Update Event
+  const updateEvent = async (eventId: string, updates: Partial<Event>) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify(updates),
+      });
 
-  // Update application status
-  const updateApplicationStatus = (applicationId: string, status: 'accepted' | 'rejected') => {
-    setApplications(prev => prev.map(app => 
-      app.id === applicationId 
-        ? { ...app, status, respondedAt: new Date().toISOString() }
-        : app
-    ));
-    
-    // Mettre à jour l'événement
-    setEvents(prev => prev.map(event => ({
-      ...event,
-      applications: event.applications.map(app =>
-        app.id === applicationId 
-          ? { ...app, status, respondedAt: new Date().toISOString() }
-          : app
-      )
-    })));
-    
-    // Créer notification pour l'humoriste
-    const application = applications.find(app => app.id === applicationId);
-    if (application) {
-      const notification: Notification = {
-        id: `notif_${Date.now()}`,
-        userId: application.humoristId,
-        type: 'application_response',
-        title: status === 'accepted' ? 'Candidature acceptée !' : 'Candidature refusée',
-        message: status === 'accepted' 
-          ? 'Félicitations ! Votre candidature a été acceptée.'
-          : 'Votre candidature n\'a pas été retenue cette fois.',
-        read: false,
-        createdAt: new Date().toISOString(),
-        relatedId: applicationId
-      };
-      
-      setNotifications(prev => [notification, ...prev]);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update event');
+      }
+      await fetchEvents(); // Re-fetch events after update
+    } catch (err: any) {
+      console.error('Error updating event:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Fonctions utilitaires
+  // Delete Event
+  const deleteEvent = async (eventId: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete event');
+      }
+      await fetchEvents(); // Re-fetch events after deletion
+    } catch (err: any) {
+      console.error('Error deleting event:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const applyToEvent = async (eventId: string, humoristId: string, message: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await fetch(`${API_BASE_URL}/applications`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          eventId,
+          humoristId,
+          message,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to apply to event');
+      }
+      await fetchApplications(); // Re-fetch applications after applying
+      toast.success("Candidature envoyée avec succès !");
+    } catch (err: any) {
+      console.error('Error applying to event:', err);
+      setError(err.message);
+      toast.error("Erreur lors de l'envoi de la candidature.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const respondToApplication = async (applicationId: string, status: 'accepted' | 'rejected') => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await fetch(`${API_BASE_URL}/applications/${applicationId}`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to respond to application');
+      }
+      await fetchApplications(); // Re-fetch applications after response
+      await fetchEvents(); // Also re-fetch events, as application status affects event data (e.g., accepted performers)
+    } catch (err: any) {
+      console.error('Error responding to application:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateApplicationStatus = async (applicationId: string, status: 'accepted' | 'rejected') => {
+    // This function can potentially be merged with respondToApplication if their logic is always identical
+    // For now, mirroring respondToApplication's logic
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await fetch(`${API_BASE_URL}/applications/${applicationId}`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update application status');
+      }
+      await fetchApplications();
+      await fetchEvents();
+    } catch (err: any) {
+      console.error('Error updating application status:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const getEventsByOrganizer = (organizerId: string) => 
     events.filter(event => event.organizerId === organizerId);
 
-  const getAvailableEvents = (humoristId: string, city?: string) => 
-    events.filter(event => 
-      event.status === 'published' && 
-      (!city || event.city === city) &&
-      !applications.some(app => app.eventId === event.id && app.humoristId === humoristId)
-    );
+  const getAvailableEvents = (humoristId: string, city?: string) => {
+    const humorist = users.find(u => u.id === humoristId);
+    if (!humorist || humorist.userType !== 'humoriste') return [];
+
+    const humoristProfile = humorist.profile as HumoristeProfile;
+
+    console.log('Debug - Humorist Profile (getAvailableEvents):', {
+      humoristId,
+      profile: humoristProfile
+    });
+
+    const filteredEvents = events.filter(event => {
+      // Check if event.applications is populated (contains full application objects) or just IDs
+      // If it contains IDs, we need to manually find them from the applications state
+      const hasApplied = applications.some(app => app.eventId === event.id && app.humoristId === humoristId);
+
+      console.log('Debug - Evaluating Event in getAvailableEvents:', {
+        eventId: event.id,
+        eventTitle: event.title,
+        eventStatus: event.status,
+        humoristId: humoristId,
+        alreadyApplied: hasApplied
+      });
+
+      if (event.status !== 'published') {
+        console.log(`Event ${event.id} (${event.title}): Not published. Skipping.`);
+        return false;
+      }
+
+      if (hasApplied) {
+        console.log(`Event ${event.id} (${event.title}): Already applied by humorist ${humoristId}. Skipping.`);
+        return false;
+      }
+      console.log(`Event ${event.id} (${event.title}): Passed all filters. Including in available events.`);
+      return true;
+    });
+    console.log('Debug - Final Filtered Events from getAvailableEvents:', filteredEvents);
+    return filteredEvents;
+  };
 
   const getApplicationsByEvent = (eventId: string) =>
     applications.filter(app => app.eventId === eventId);
@@ -424,14 +435,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Stats
   const getOrganizerStats = (organizerId: string) => {
     const organizerEvents = events.filter(event => event.organizerId === organizerId);
-    const organizer = getUserById(organizerId);
+    const organizer = users.find(u => u.id === organizerId); 
     
     return {
       totalEvents: organizerEvents.length,
       totalApplications: organizerEvents.reduce((sum, event) => sum + event.applications.length, 0),
       completedEvents: organizerEvents.filter(event => event.status === 'completed').length,
       averageResponseTime: 2,
-      companyName: organizer?.userType === 'organisateur' && 'companyName' in organizer.profile ? organizer.profile.companyName : undefined
+      companyName: organizer?.userType === 'organisateur' && 'profile' in organizer && 'companyName' in organizer.profile ? organizer.profile.companyName : undefined
     };
   };
 
@@ -447,25 +458,24 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   };
 
-  const updateEvent = (eventId: string, updates: Partial<Event>) => {
-    setEvents(prev => prev.map(event => 
-      event.id === eventId ? { ...event, ...updates } : event
-    ));
-  };
-
   const value: DataContextType = {
+    isLoading,
+    error,
     events,
     createEvent,
     updateEvent,
+    deleteEvent,
     getEventsByOrganizer,
     getAvailableEvents,
     getEventById,
+    fetchEvents,
     applications,
     applyToEvent,
     respondToApplication,
     updateApplicationStatus,
     getApplicationsByEvent,
     getApplicationsByHumorist,
+    fetchApplications,
     messages,
     sendMessage,
     markMessageAsRead,

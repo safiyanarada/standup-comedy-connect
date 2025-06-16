@@ -1,10 +1,9 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, LoginCredentials, SignupData } from '@/types/auth';
+import { User, LoginCredentials, SignupData, HumoristeProfile } from '@/types/auth';
 
 interface AuthContextType {
   user: User | null;
-  users: User[]; // Add users array
+  users: User[];
   loading: boolean;
   error: string | null;
   login: (credentials: LoginCredentials) => Promise<void>;
@@ -15,6 +14,7 @@ interface AuthContextType {
   isHumoriste: boolean;
   isOrganisateur: boolean;
   clearError: () => void;
+  token: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -23,91 +23,73 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Mock users data
-const mockUsers: User[] = [
-  {
-    id: '1',
-    email: 'demo@standup.com',
-    firstName: 'Demo',
-    lastName: 'User',
-    userType: 'humoriste',
-    profile: {
-      stageName: 'Demo Comic',
-      city: 'Paris',
-      bio: 'Humoriste passionné de stand-up !',
-      mobilityZone: 50,
-      experienceLevel: 'intermediaire',
-      socialLinks: {
-        instagram: '@democomic',
-        tiktok: '@democomic'
-      },
-      genres: ['observationnel', 'stand-up'],
-      availability: {
-        weekdays: true,
-        weekends: true,
-        evenings: true
-      }
-    },
-    stats: {
-      totalEvents: 25,
-      totalRevenue: 3500,
-      averageRating: 4.7,
-      viralScore: 850,
-      profileViews: 1250,
-      lastActivity: new Date().toISOString()
-    },
-    onboardingCompleted: true,
-    emailVerified: true,
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-    createdAt: '2024-01-01T00:00:00Z',
-    lastLoginAt: new Date().toISOString()
-  }
-];
-
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [users] = useState<User[]>(mockUsers); // Add users state
+  const [users, setUsers] = useState<User[]>(() => {
+    const savedUsers = localStorage.getItem('standup_users');
+    return savedUsers ? JSON.parse(savedUsers) : [];
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Mock data pour la démo
-  const mockUser: User = mockUsers[0];
+  const [token, setToken] = useState<string | null>(localStorage.getItem('standup_token'));
 
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const token = localStorage.getItem('standup_token');
-        if (token) {
-          // Simulation d'une vérification de token
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          setUser(mockUser);
+        const storedToken = localStorage.getItem('standup_token');
+        const savedUser = localStorage.getItem('standup_current_user');
+        
+        if (storedToken && savedUser) {
+          const parsedUser = JSON.parse(savedUser);
+          const userExists = users.some(u => u.id === parsedUser.id);
+          if (userExists) {
+            setUser(parsedUser);
+            setToken(storedToken);
+            console.log("User loaded from localStorage:", parsedUser);
+          } else {
+            localStorage.removeItem('standup_token');
+            localStorage.removeItem('standup_current_user');
+            setToken(null);
+          }
         }
       } catch (err) {
         console.error('Auth init error:', err);
         localStorage.removeItem('standup_token');
+        localStorage.removeItem('standup_current_user');
+        setToken(null);
       } finally {
         setLoading(false);
       }
     };
 
     initAuth();
-  }, []);
+  }, [users]);
+
+  useEffect(() => {
+    localStorage.setItem('standup_users', JSON.stringify(users));
+  }, [users]);
 
   const login = async (credentials: LoginCredentials) => {
     try {
       setLoading(true);
       setError(null);
 
-      // Simulation d'une connexion
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const foundUser = users.find(u => u.email === credentials.email);
       
-      if (credentials.email === 'demo@standup.com' && credentials.password === 'Demo123!') {
-        const token = 'demo_token_' + Date.now();
-        localStorage.setItem('standup_token', token);
-        setUser(mockUser);
-      } else {
-        throw new Error('Identifiants incorrects');
+      if (!foundUser) {
+        throw new Error('Utilisateur non trouvé');
       }
+
+      if (foundUser.password !== credentials.password) {
+        throw new Error('Mot de passe incorrect');
+      }
+
+      const newToken = 'token_' + Date.now();
+      localStorage.setItem('standup_token', newToken);
+      localStorage.setItem('standup_current_user', JSON.stringify(foundUser));
+      setUser(foundUser);
+      setToken(newToken);
+      console.log("User after successful login:", foundUser);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur de connexion');
@@ -122,41 +104,58 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
 
-      // Simulation d'une inscription
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      if (users.some(u => u.email === data.email)) {
+        throw new Error('Cet email est déjà utilisé');
+      }
+
       const newUser: User = {
-        ...mockUser,
-        id: 'new_' + Date.now(),
+        id: 'user_' + Date.now(),
         email: data.email,
+        password: data.password,
         firstName: data.firstName,
         lastName: data.lastName,
         userType: data.userType,
         onboardingCompleted: false,
+        emailVerified: false,
+        stats: {
+          totalEvents: 0,
+          totalRevenue: 0,
+          averageRating: 0,
+          viralScore: 0,
+          profileViews: 0,
+          lastActivity: new Date().toISOString()
+        },
         profile: data.userType === 'humoriste' ? {
           stageName: data.stageName,
-          city: data.city,
+          location: data.location,
           bio: '',
-          mobilityZone: 30,
+          mobilityZone: { radius: 30 },
           experienceLevel: 'debutant',
           genres: [],
           availability: {
             weekdays: false,
             weekends: false,
             evenings: false
-          }
+          },
+          phone: data.phone
         } : {
           companyName: data.companyName,
-          city: data.city,
+          location: data.location,
           description: '',
           venueTypes: [],
           eventFrequency: 'monthly'
-        }
+        },
+        createdAt: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString()
       };
 
-      const token = 'new_token_' + Date.now();
-      localStorage.setItem('standup_token', token);
+      setUsers(prev => [...prev, newUser]);
+      
+      const newToken = 'token_' + Date.now();
+      localStorage.setItem('standup_token', newToken);
+      localStorage.setItem('standup_current_user', JSON.stringify(newUser));
       setUser(newUser);
+      setToken(newToken);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de l\'inscription');
@@ -168,45 +167,72 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('standup_token');
+    localStorage.removeItem('standup_current_user');
     setUser(null);
+    setToken(null);
   };
 
   const updateProfile = async (profileData: any): Promise<User> => {
     try {
       if (!user) throw new Error('Utilisateur non connecté');
       
-      // Simulation d'une mise à jour
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const updatedUser = {
+      const updatedProfile = { ...user.profile };
+
+      if (user.userType === 'humoriste') {
+        const humoristeProfile = updatedProfile as HumoristeProfile;
+        if (profileData.mobilityZone !== undefined) {
+          if (typeof profileData.mobilityZone === 'number') {
+            humoristeProfile.mobilityZone = { radius: Math.max(1, profileData.mobilityZone) };
+          } else if (typeof profileData.mobilityZone === 'object' && profileData.mobilityZone !== null && typeof profileData.mobilityZone.radius === 'number') {
+            humoristeProfile.mobilityZone = { ...humoristeProfile.mobilityZone, radius: Math.max(1, profileData.mobilityZone.radius) };
+          } else {
+            humoristeProfile.mobilityZone = { radius: 30 };
+          }
+        } else if (!humoristeProfile.mobilityZone?.radius) {
+          humoristeProfile.mobilityZone = { radius: 30 };
+        }
+      }
+
+      const { mobilityZone, ...restProfileData } = profileData;
+
+      Object.assign(updatedProfile, restProfileData);
+
+      const updatedUser: User = {
         ...user,
-        profile: { ...user.profile, ...profileData },
-        onboardingCompleted: true
+        profile: updatedProfile,
       };
-      
+
+      setUsers(prevUsers => prevUsers.map(u => (u.id === updatedUser.id ? updatedUser : u)));
+      localStorage.setItem('standup_current_user', JSON.stringify(updatedUser));
       setUser(updatedUser);
+
       return updatedUser;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur de mise à jour');
+      setError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour du profil');
       throw err;
     }
   };
+
+  const isAuthenticated = !!user && !!token;
+  const isHumoriste = isAuthenticated && user?.userType === 'humoriste';
+  const isOrganisateur = isAuthenticated && user?.userType === 'organisateur';
 
   const clearError = () => setError(null);
 
   const value: AuthContextType = {
     user,
-    users, // Add users to the context value
+    users,
     loading,
     error,
     login,
     signup,
     logout,
     updateProfile,
-    isAuthenticated: !!user,
-    isHumoriste: user?.userType === 'humoriste',
-    isOrganisateur: user?.userType === 'organisateur',
-    clearError
+    isAuthenticated,
+    isHumoriste,
+    isOrganisateur,
+    clearError,
+    token,
   };
 
   return (
@@ -219,7 +245,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, MapPin, Clock, Euro, Users } from 'lucide-react';
@@ -18,8 +17,10 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose }) 
     title: '',
     description: '',
     venue: '',
+    location: {
+      city: '',
     address: '',
-    city: '',
+    },
     date: '',
     startTime: '',
     endTime: '',
@@ -28,6 +29,16 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose }) 
     requirements: '',
     eventType: 'open-mic' as 'open-mic' | 'show' | 'private' | 'festival'
   });
+
+  const handleLocationChange = (field: 'city' | 'address', value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      location: {
+        ...prev.location,
+        [field]: value,
+      },
+    }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,8 +58,10 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose }) 
       title: '',
       description: '',
       venue: '',
+      location: {
+        city: '',
       address: '',
-      city: '',
+      },
       date: '',
       startTime: '',
       endTime: '',
@@ -174,8 +187,8 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose }) 
                     Ville
                   </label>
                   <Input
-                    value={formData.city}
-                    onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                    value={formData.location.city}
+                    onChange={(e) => handleLocationChange('city', e.target.value)}
                     placeholder="ex: Paris"
                     className="bg-gray-800 border-gray-600 text-white"
                     required
@@ -188,8 +201,8 @@ const CreateEventModal: React.FC<CreateEventModalProps> = ({ isOpen, onClose }) 
                   Adresse
                 </label>
                 <Input
-                  value={formData.address}
-                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                  value={formData.location.address}
+                  onChange={(e) => handleLocationChange('address', e.target.value)}
                   placeholder="ex: 15 rue de la Gaîté, 75014 Paris"
                   className="bg-gray-800 border-gray-600 text-white"
                   required

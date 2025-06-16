@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { User } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -28,6 +27,11 @@ const BasicInfoCard: React.FC<BasicInfoCardProps> = ({
     'Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 
     'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille'
   ];
+
+  // Helper function to safely access formData properties
+  const getFormDataValue = (key: keyof (HumoristeProfile | OrganisateurProfile)) => {
+    return (formData as any)[key] || '';
+  };
 
   return (
     <Card className="p-6 bg-gray-800/50 border-gray-700">
@@ -67,21 +71,37 @@ const BasicInfoCard: React.FC<BasicInfoCardProps> = ({
           <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
           <p className="text-gray-400">{user.email}</p>
         </div>
-        
+
         {isHumoriste && (
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Nom de scène</label>
-            {isEditing ? (
-              <Input
-                value={(formData as HumoristeProfile).stageName || ''}
-                onChange={(e) => onFormDataChange({ stageName: e.target.value })}
-                className="bg-gray-700 border-gray-600 text-white"
-                placeholder="Ton nom d'artiste"
-              />
-            ) : (
-              <p className="text-white">{humoristeProfile?.stageName || 'Non défini'}</p>
-            )}
-          </div>
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Nom de scène</label>
+              {isEditing ? (
+                <Input
+                  value={(formData as HumoristeProfile).stageName || ''}
+                  onChange={(e) => onFormDataChange({ stageName: e.target.value })}
+                  className="bg-gray-700 border-gray-600 text-white"
+                  placeholder="Ton nom d'artiste"
+                />
+              ) : (
+                <p className="text-white">{humoristeProfile?.stageName || 'Non défini'}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Numéro de téléphone</label>
+              {isEditing ? (
+                <Input
+                  type="tel"
+                  value={(formData as HumoristeProfile).phone || ''}
+                  onChange={(e) => onFormDataChange({ phone: e.target.value })}
+                  className="bg-gray-700 border-gray-600 text-white"
+                  placeholder="Votre numéro de téléphone"
+                />
+              ) : (
+                <p className="text-white">{humoristeProfile?.phone || 'Non défini'}</p>
+              )}
+            </div>
+          </>
         )}
 
         {isOrganisateur && (
@@ -104,8 +124,8 @@ const BasicInfoCard: React.FC<BasicInfoCardProps> = ({
           <label className="block text-sm font-medium text-gray-300 mb-2">Ville</label>
           {isEditing ? (
             <Select 
-              value={formData.city || ''} 
-              onValueChange={(value) => onFormDataChange({ city: value })}
+              value={formData.location?.city || ''}
+              onValueChange={(value) => onFormDataChange({ location: { ...(formData as any).location, city: value } })}
             >
               <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                 <SelectValue placeholder="Sélectionne ta ville" />
@@ -117,7 +137,7 @@ const BasicInfoCard: React.FC<BasicInfoCardProps> = ({
               </SelectContent>
             </Select>
           ) : (
-            <p className="text-white">{user.profile.city}</p>
+            <p className="text-white">{user.profile.location?.city || 'Non défini'}</p>
           )}
         </div>
       </div>

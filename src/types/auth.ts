@@ -1,7 +1,7 @@
-
 export interface User {
   id: string;
   email: string;
+  password: string;
   firstName: string;
   lastName: string;
   userType: 'humoriste' | 'organisateur';
@@ -14,11 +14,22 @@ export interface User {
   lastLoginAt: string;
 }
 
+export interface Location {
+  city: string;
+  postalCode: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
 export interface HumoristeProfile {
   stageName?: string;
-  city: string;
+  location: Location;
   bio?: string;
-  mobilityZone: number;
+  mobilityZone: {
+    radius: number; // en kilomètres
+    preferredCities?: string[]; // villes préférées pour les performances
+  };
   experienceLevel: 'debutant' | 'intermediaire' | 'expert';
   socialLinks?: {
     instagram?: string;
@@ -30,11 +41,12 @@ export interface HumoristeProfile {
     weekends: boolean;
     evenings: boolean;
   };
+  phone?: string;
 }
 
 export interface OrganisateurProfile {
   companyName?: string;
-  city: string;
+  location: Location;
   description?: string;
   website?: string;
   venueTypes: string[];
@@ -66,7 +78,7 @@ export interface SignupData {
   lastName: string;
   phone?: string;
   userType: 'humoriste' | 'organisateur';
-  city: string;
+  location: Location;
   stageName?: string;
   companyName?: string;
 }

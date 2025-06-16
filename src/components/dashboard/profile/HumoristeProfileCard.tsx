@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Star } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -63,12 +62,12 @@ const HumoristeProfileCard: React.FC<HumoristeProfileCardProps> = ({
             {isEditing ? (
               <Input
                 type="number"
-                value={formData.mobilityZone || 30}
-                onChange={(e) => onFormDataChange({ mobilityZone: Number(e.target.value) })}
+                value={formData.mobilityZone?.radius || ''}
+                onChange={(e) => onFormDataChange({ mobilityZone: { ...formData.mobilityZone, radius: Number(e.target.value) } })}
                 className="bg-gray-700 border-gray-600 text-white"
               />
             ) : (
-              <p className="text-white">{profile.mobilityZone} km</p>
+              <p className="text-white">{profile.mobilityZone?.radius} km</p>
             )}
           </div>
 
