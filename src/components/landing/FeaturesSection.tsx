@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import FeatureCard from './FeatureCard';
@@ -40,6 +39,12 @@ const FeaturesSection: React.FC = () => {
       title: "Communauté Active",
       description: "Rejoins une communauté de passionnés, partage tes expériences et apprends des meilleurs humoristes.",
       gradient: "from-pink-500 to-rose-500"
+    },
+    {
+      icon: "📚",
+      title: "Événements Archivés",
+      description: "Accédez à l'historique complet de vos événements passés, avec statistiques et retours d'expérience.",
+      gradient: "from-yellow-500 to-orange-500"
     }
   ];
 
@@ -65,7 +70,7 @@ const FeaturesSection: React.FC = () => {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {features.map((feature, index) => (
             <FeatureCard
               key={index}

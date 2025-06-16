@@ -1,17 +1,17 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { register, login, getProfile } from '../controllers/auth';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { validate } from '../middleware/validation';
 import { registerSchema, loginSchema } from '../validation/schemas';
-import { Request, Response, NextFunction } from 'express';
 
 const router = Router();
 
-// Async handler wrapper
-const asyncHandler = (fn: (req: Request | AuthRequest, res: Response) => Promise<Response | void>) => {
+// Async handler wrapper that returns an Express RequestHandler
+const asyncHandler = (fn: (req: Request | AuthRequest, res: Response) => Promise<any>): RequestHandler => {
   return async (req: Request | AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       await fn(req, res);
+      return; // Explicitly return void
     } catch (error) {
       next(error);
     }

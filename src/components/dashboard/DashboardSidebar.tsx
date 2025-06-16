@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -24,15 +23,7 @@ interface DashboardSidebarProps {
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ userType }) => {
   const { user, logout } = useAuth();
 
-  const humoristeMenuItems = [
-    { icon: Home, label: 'Tableau de bord', href: '/dashboard/humoriste' },
-    { icon: MapPin, label: 'Opportunités', href: '/dashboard/humoriste/opportunities' },
-    { icon: Calendar, label: 'Mes candidatures', href: '/dashboard/humoriste/applications' },
-    { icon: MessageCircle, label: 'Messages', href: '/dashboard/humoriste/messages' },
-    { icon: Zap, label: 'Score viral', href: '/dashboard/humoriste/viral' },
-    { icon: BarChart3, label: 'Statistiques', href: '/dashboard/humoriste/stats' },
-    { icon: Settings, label: 'Profil', href: '/dashboard/humoriste/profile' }
-  ];
+  const humoristeMenuItems = [];
 
   const organisateurMenuItems = [
     { icon: Home, label: 'Tableau de bord', href: '/dashboard/organisateur' },

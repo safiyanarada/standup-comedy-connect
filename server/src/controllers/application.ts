@@ -2,16 +2,26 @@ import { Request, Response } from 'express';
 import { ApplicationModel } from '../models/Application';
 import { EventModel } from '../models/Event';
 import { AuthRequest } from '../middleware/auth';
+import { EventDocument } from '../models/Event';
+import { ApplicationDocument } from '../models/Application';
+import { Event, Application } from '../types';
+import { Types } from 'mongoose';
 
-export const createApplication = async (req: AuthRequest, res: Response) => {
+export const createApplication = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { eventId, performanceDetails } = req.body;
     const comedianId = req.user?.id;
 
+    if (!comedianId) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
     // Vérifier si l'événement existe
     const event = await EventModel.findById(eventId);
     if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
+      res.status(404).json({ message: 'Event not found' });
+      return;
     }
 
     // Vérifier si l'utilisateur a déjà postulé
@@ -21,13 +31,14 @@ export const createApplication = async (req: AuthRequest, res: Response) => {
     });
 
     if (existingApplication) {
-      return res.status(400).json({ message: 'You have already applied to this event' });
+      res.status(400).json({ message: 'You have already applied to this event' });
+      return;
     }
 
     // Créer la candidature
     const application = new ApplicationModel({
-      event: eventId,
-      comedian: comedianId,
+      event: new Types.ObjectId(eventId),
+      comedian: new Types.ObjectId(comedianId),
       performanceDetails,
       status: 'PENDING'
     });
@@ -35,8 +46,9 @@ export const createApplication = async (req: AuthRequest, res: Response) => {
     await application.save();
 
     // Ajouter la candidature à l'événement
-    event.applications.push(application._id);
-    await event.save();
+    const eventDoc = event as EventDocument;
+    eventDoc.applications.push(application._id as unknown as Types.ObjectId);
+    await eventDoc.save();
 
     res.status(201).json({
       message: 'Application submitted successfully',
@@ -48,15 +60,21 @@ export const createApplication = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getEventApplications = async (req: AuthRequest, res: Response) => {
+export const getEventApplications = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { eventId } = req.params;
     const organizerId = req.user?.id;
 
+    if (!organizerId) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
     // Vérifier si l'organisateur est propriétaire de l'événement
     const event = await EventModel.findOne({ _id: eventId, organizer: organizerId });
     if (!event) {
-      return res.status(404).json({ message: 'Event not found or unauthorized' });
+      res.status(404).json({ message: 'Event not found or unauthorized' });
+      return;
     }
 
     const applications = await ApplicationModel.find({ event: eventId })
@@ -70,11 +88,16 @@ export const getEventApplications = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const updateApplicationStatus = async (req: AuthRequest, res: Response) => {
+export const updateApplicationStatus = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { applicationId } = req.params;
     const { status } = req.body;
     const organizerId = req.user?.id;
+
+    if (!organizerId) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
 
     const application = await ApplicationModel.findById(applicationId)
       .populate({
@@ -83,20 +106,23 @@ export const updateApplicationStatus = async (req: AuthRequest, res: Response) =
       });
 
     if (!application) {
-      return res.status(404).json({ message: 'Application not found' });
+      res.status(404).json({ message: 'Application not found' });
+      return;
     }
 
     // Vérifier si l'organisateur est propriétaire de l'événement
-    if (application.event.organizer.toString() !== organizerId) {
-      return res.status(403).json({ message: 'Unauthorized' });
+    const applicationDoc = application as unknown as ApplicationDocument & { event: { organizer: Types.ObjectId } };
+    if (applicationDoc.event.organizer.toString() !== organizerId) {
+      res.status(403).json({ message: 'Unauthorized' });
+      return;
     }
 
-    application.status = status;
-    await application.save();
+    applicationDoc.status = status;
+    await applicationDoc.save();
 
     res.json({
       message: 'Application status updated successfully',
-      application
+      application: applicationDoc
     });
   } catch (error) {
     console.error('Update application status error:', error);
@@ -104,9 +130,14 @@ export const updateApplicationStatus = async (req: AuthRequest, res: Response) =
   }
 };
 
-export const getComedianApplications = async (req: AuthRequest, res: Response) => {
+export const getComedianApplications = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const comedianId = req.user?.id;
+
+    if (!comedianId) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
 
     const applications = await ApplicationModel.find({ comedian: comedianId })
       .populate({

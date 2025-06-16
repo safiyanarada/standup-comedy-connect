@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { EventModel } from '../models/Event';
 import { AuthRequest } from '../middleware/auth';
 
-export const createEvent = async (req: AuthRequest, res: Response) => {
+export const createEvent = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { title, description, date, location, requirements } = req.body;
     const organizerId = req.user?.id;
@@ -30,7 +30,7 @@ export const createEvent = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getEvents = async (req: Request, res: Response) => {
+export const getEvents = async (req: Request, res: Response): Promise<void> => {
   try {
     const { status, date, city } = req.query;
     const query: any = {};
@@ -50,7 +50,7 @@ export const getEvents = async (req: Request, res: Response) => {
   }
 };
 
-export const getEventById = async (req: Request, res: Response) => {
+export const getEventById = async (req: Request, res: Response): Promise<void> => {
   try {
     const event = await EventModel.findById(req.params.id)
       .populate('organizer', 'firstName lastName email')
@@ -63,7 +63,8 @@ export const getEventById = async (req: Request, res: Response) => {
       });
 
     if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
+      res.status(404).json({ message: 'Event not found' });
+      return;
     }
 
     res.json({ event });
@@ -73,14 +74,15 @@ export const getEventById = async (req: Request, res: Response) => {
   }
 };
 
-export const updateEvent = async (req: AuthRequest, res: Response) => {
+export const updateEvent = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const eventId = req.params.id;
     const organizerId = req.user?.id;
 
     const event = await EventModel.findOne({ _id: eventId, organizer: organizerId });
     if (!event) {
-      return res.status(404).json({ message: 'Event not found or unauthorized' });
+      res.status(404).json({ message: 'Event not found or unauthorized' });
+      return;
     }
 
     const updatedEvent = await EventModel.findByIdAndUpdate(
@@ -99,14 +101,15 @@ export const updateEvent = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const deleteEvent = async (req: AuthRequest, res: Response) => {
+export const deleteEvent = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const eventId = req.params.id;
     const organizerId = req.user?.id;
 
     const event = await EventModel.findOne({ _id: eventId, organizer: organizerId });
     if (!event) {
-      return res.status(404).json({ message: 'Event not found or unauthorized' });
+      res.status(404).json({ message: 'Event not found or unauthorized' });
+      return;
     }
 
     await EventModel.findByIdAndDelete(eventId);
@@ -118,7 +121,7 @@ export const deleteEvent = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getOrganizerEvents = async (req: AuthRequest, res: Response) => {
+export const getOrganizerEvents = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const organizerId = req.user?.id;
 

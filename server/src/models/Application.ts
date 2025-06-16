@@ -1,7 +1,12 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 import { Application, PerformanceDetails } from '../types';
 
-export interface ApplicationDocument extends Application, Document {}
+export interface ApplicationDocument extends Document {
+  event: Types.ObjectId;
+  comedian: Types.ObjectId;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  performanceDetails: PerformanceDetails;
+}
 
 const performanceDetailsSchema = new Schema<PerformanceDetails>({
   duration: { type: Number, required: true },

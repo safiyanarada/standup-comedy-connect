@@ -18,7 +18,8 @@ export const authMiddleware = async (
     const token = req.headers.authorization?.split(' ')[1];
 
     if (!token) {
-      return res.status(401).json({ message: 'Authentication required' });
+      res.status(401).json({ message: 'Authentication required' });
+      return;
     }
 
     if (!config.jwt.secret) {
@@ -33,6 +34,7 @@ export const authMiddleware = async (
     req.user = decoded;
     next();
   } catch (error) {
-    return res.status(401).json({ message: 'Invalid token' });
+    res.status(401).json({ message: 'Invalid token' });
+    return;
   }
 }; 

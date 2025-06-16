@@ -1,10 +1,19 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 import { Event, Location, EventRequirements } from '../types';
 
-export interface EventDocument extends Event, Document {}
+export interface EventDocument extends Document {
+  title: string;
+  description: string;
+  date: Date;
+  location: Location;
+  organizer: Types.ObjectId;
+  status: 'DRAFT' | 'PUBLISHED' | 'CANCELLED' | 'COMPLETED';
+  requirements: EventRequirements;
+  applications: Types.ObjectId[];
+}
 
 const locationSchema = new Schema<Location>({
-  venue: { type: String, required: true },
+  venue: { type: String, required: false },
   address: { type: String, required: true },
   city: { type: String, required: true },
   country: { type: String, required: true }

@@ -97,7 +97,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_BASE_URL = 'http://localhost:5000/api'; // Define your backend API URL
+  const API_BASE_URL = 'http://localhost:3000/api'; // Define your backend API URL
 
   const authHeaders = useCallback(() => ({
     'Content-Type': 'application/json',

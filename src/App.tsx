@@ -47,7 +47,11 @@ const OrganizerRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     );
   }
 
-  return user && user.userType === 'organisateur' ? <>{children}</> : <Navigate to="/dashboard" />;
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  return user.userType === 'organisateur' ? <>{children}</> : <Navigate to="/dashboard" />;
 };
 
 const HumoristRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -64,7 +68,21 @@ const HumoristRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     );
   }
 
-  return user && user.userType === 'humoriste' ? <>{children}</> : <Navigate to="/dashboard" />;
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  return user.userType === 'humoriste' ? <>{children}</> : <Navigate to="/dashboard" />;
+};
+
+const DashboardContent: React.FC = () => {
+  const { user } = useAuth();
+
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  return user.userType === 'humoriste' ? <HumoristeDashboard /> : <OrganisateurDashboard />;
 };
 
 const App: React.FC = () => {
@@ -81,7 +99,7 @@ const App: React.FC = () => {
                 element={
                   <PrivateRoute>
                     <DashboardLayout>
-                      <OrganisateurDashboard />
+                      <DashboardContent />
                     </DashboardLayout>
                   </PrivateRoute>
                 }

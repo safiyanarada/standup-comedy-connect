@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { UserModel } from '../models/User';
 import { config } from '../config/env';
 
@@ -35,10 +35,16 @@ export const register = async (req: Request, res: Response) => {
     await user.save();
 
     // Générer le token JWT
+    if (!config.jwt.secret) {
+      console.error('JWT_SECRET is not defined in environment variables.');
+      res.status(500).json({ message: 'Server configuration error.' });
+      return;
+    }
+    const options: SignOptions = { expiresIn: 86400 }; // 24 heures en secondes
     const token = jwt.sign(
       { id: user._id, email: user.email },
-      config.jwt.secret!,
-      { expiresIn: config.jwt.expiresIn }
+      config.jwt.secret as string,
+      options
     );
 
     res.status(201).json({
@@ -53,7 +59,7 @@ export const register = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('Registration error details:', error);
     res.status(500).json({ message: 'Error registering user' });
   }
 };
@@ -77,10 +83,16 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // Générer le token JWT
+    if (!config.jwt.secret) {
+      console.error('JWT_SECRET is not defined in environment variables.');
+      res.status(500).json({ message: 'Server configuration error.' });
+      return;
+    }
+    const options: SignOptions = { expiresIn: 86400 }; // 24 heures en secondes
     const token = jwt.sign(
       { id: user._id, email: user.email },
-      config.jwt.secret!,
-      { expiresIn: config.jwt.expiresIn }
+      config.jwt.secret as string,
+      options
     );
 
     res.json({

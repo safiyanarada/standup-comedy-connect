@@ -123,8 +123,8 @@ const performanceSchema = new Schema<Performance>({
 });
 
 const userProfileSchema = new Schema<UserProfile>({
-  bio: { type: String, required: true },
-  experience: { type: String, required: true },
+  bio: { type: String },
+  experience: { type: String },
   socialLinks: {
     youtube: { type: String },
     instagram: { type: String },

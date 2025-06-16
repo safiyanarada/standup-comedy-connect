@@ -16,11 +16,20 @@ export const loginSchema = z.object({
 
 // Schéma de validation pour les événements
 export const locationSchema = z.object({
-  venue: z.string().min(1, 'Venue is required'),
+  venue: z.string().optional(),
   address: z.string().min(1, 'Address is required'),
   city: z.string().min(1, 'City is required'),
   country: z.string().min(1, 'Country is required')
 });
+
+// Nouveau schéma pour la mise à jour partielle de la localisation
+export const updateLocationSchema = z.object({
+  city: z.string().min(1, 'City is required').optional(),
+  postalCode: z.string().optional(),
+  address: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+}).partial();
 
 export const requirementsSchema = z.object({
   minExperience: z.number().min(0, 'Minimum experience must be 0 or greater'),
@@ -52,4 +61,19 @@ export const createApplicationSchema = z.object({
 
 export const updateApplicationStatusSchema = z.object({
   status: z.enum(['PENDING', 'ACCEPTED', 'REJECTED'])
-}); 
+});
+
+// Schéma de validation pour la mise à jour du profil (mis à jour)
+export const updateProfileSchema = z.object({
+  firstName: z.string().min(2, 'First name must be at least 2 characters').optional(),
+  lastName: z.string().min(2, 'Last name must be at least 2 characters').optional(),
+  email: z.string().email('Invalid email format').optional(),
+  organizerProfile: z.object({
+    companyName: z.string().optional(),
+    description: z.string().optional(),
+    website: z.string().url('Invalid website URL').optional(),
+    venueTypes: z.array(z.string()).optional(),
+    eventFrequency: z.enum(['weekly', 'monthly', 'occasional']).optional(),
+    location: updateLocationSchema.optional(), // Intégrer le schéma de localisation ici
+  }).optional(),
+}).partial(); 

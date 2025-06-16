@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { Card } from '@/components/ui/card';
-import { Users, Calendar, Clock } from 'lucide-react';
+import { Users, Calendar, Clock, Archive } from 'lucide-react';
 import { motion } from 'framer-motion';
+import MessagesPage from './MessagesPage';
+import SearchHumoristsPage from './SearchHumoristsPage';
 
 const OrganisateurDashboard: React.FC = () => {
   const { user } = useAuth();
   const { getOrganizerStats, applications, events } = useData();
+  const [activeTab, setActiveTab] = useState<'overview' | 'events' | 'applications' | 'search' | 'messages' | 'billing' | 'stats' | 'settings'>('overview');
 
   if (!user || user.userType !== 'organisateur') {
     return (
@@ -76,11 +79,20 @@ const OrganisateurDashboard: React.FC = () => {
     return event.status === 'full' || (event.maxPerformers !== undefined && acceptedCount >= (event.maxPerformers || 0));
   });
 
+  // Number of archived events (can be considered completed events)
+  const archivedEventsCount = completedEvents.length;
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'messages':
+        return <MessagesPage />;
+      case 'search':
+        return <SearchHumoristsPage />;
+      case 'overview':
+      default:
   return (
-    <div className="flex-1 p-8 pt-6">
-      <h1 className="text-3xl font-bold text-white mb-6">Tableau de bord de l'organisateur</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {/* Événements créés */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -174,7 +186,7 @@ const OrganisateurDashboard: React.FC = () => {
           transition={{ delay: 0.5 }}
         >
           <Card className="p-6 bg-gray-800/50 border-gray-700">
-            <h3 className="text-lg font-semibold text-white mb-4">Événements complets / Passés</h3>
+                  <h3 className="text-lg font-semibold text-white mb-4">Événements complets</h3>
             {upcomingFullEvents.length > 0 || completedEvents.length > 0 ? (
               <ul className="space-y-3">
                 {upcomingFullEvents.slice(0, 3).map(event => (
@@ -196,7 +208,60 @@ const OrganisateurDashboard: React.FC = () => {
             )}
           </Card>
         </motion.div>
+
+              {/* Événements archivés */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+              >
+                <Card className="p-6 bg-gray-800/50 border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-400 text-sm">Événements archivés</p>
+                      <p className="text-2xl font-bold text-white">{archivedEventsCount}</p>
+                    </div>
+                    <Archive className="w-8 h-8 text-indigo-400" />
+                  </div>
+                </Card>
+              </motion.div>
+            </div>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="flex-1 p-8 pt-6">
+      <h1 className="text-3xl font-bold text-white mb-6">Tableau de bord de l'organisateur</h1>
+      
+      {/* Navigation par onglets */}
+      <div className="mb-6">
+        <div className="flex space-x-2 border-b border-gray-700">
+          <button
+            className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${activeTab === 'overview' ? 'text-pink-500 border-b-2 border-pink-500' : 'text-gray-400 hover:text-white'}`}
+            onClick={() => setActiveTab('overview')}
+          >
+            Vue d'ensemble
+          </button>
+          <button
+            className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${activeTab === 'messages' ? 'text-pink-500 border-b-2 border-pink-500' : 'text-gray-400 hover:text-white'}`}
+            onClick={() => setActiveTab('messages')}
+          >
+            Messages
+          </button>
+          <button
+            className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${activeTab === 'search' ? 'text-pink-500 border-b-2 border-pink-500' : 'text-gray-400 hover:text-white'}`}
+            onClick={() => setActiveTab('search')}
+          >
+            Rechercher
+          </button>
+          {/* Ajoutez d'autres onglets ici si nécessaire */}
+        </div>
       </div>
+
+      {/* Contenu de l'onglet */}
+      {renderContent()}
     </div>
   );
 };

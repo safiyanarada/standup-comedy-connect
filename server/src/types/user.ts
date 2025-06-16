@@ -1,5 +1,13 @@
 import { Types } from 'mongoose';
 
+export interface ILocation {
+  city: string;
+  postalCode: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
 export interface Performance {
   eventId: Types.ObjectId;
   date: Date;
@@ -9,8 +17,8 @@ export interface Performance {
 }
 
 export interface UserProfile {
-  bio: string;
-  experience: string;
+  bio?: string;
+  experience?: string;
   socialLinks?: {
     youtube?: string;
     instagram?: string;
@@ -19,13 +27,27 @@ export interface UserProfile {
   performances?: Performance[];
 }
 
+export interface IOrganisateurProfile {
+  companyName?: string;
+  location?: ILocation;
+  description?: string;
+  website?: string;
+  venueTypes?: string[];
+  averageBudget?: {
+    min?: number;
+    max?: number;
+  };
+  eventFrequency?: 'weekly' | 'monthly' | 'occasional';
+}
+
 export interface User {
   email: string;
   password?: string;
   firstName: string;
   lastName: string;
   role: 'COMEDIAN' | 'ORGANIZER' | 'ADMIN';
-  profile: UserProfile;
+  profile?: UserProfile;
+  organizerProfile?: IOrganisateurProfile;
   stats?: any;
   onboardingCompleted?: boolean;
   emailVerified?: boolean;
