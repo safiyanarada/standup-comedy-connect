@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Calendar, Clock, Euro, Users, Filter, Search } from 'lucide-react';
+import { MapPin, Calendar, Clock, Euro, Users, Filter, Search, Navigation } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ApplyToEventModal from './ApplyToEventModal';
+import { calculateDistanceKm, getCityCoordinates } from '@/lib/geolocation';
 
 const OpportunitiesPage: React.FC = () => {
   const { user } = useAuth();
@@ -22,6 +22,27 @@ const OpportunitiesPage: React.FC = () => {
 
   const availableEvents = getAvailableEvents(user.id);
   
+  // Fonction pour calculer la distance d'un événement
+  const calculateEventDistance = (event: any): number | null => {
+    if (user.userType !== 'humoriste' || !('coordinates' in user.profile)) return null;
+    
+    // Si les deux ont des coordonnées GPS, calcul précis
+    if (user.profile.coordinates && event.coordinates) {
+      return calculateDistanceKm(user.profile.coordinates, event.coordinates);
+    }
+    
+    // Sinon, calcul basé sur les villes
+    if (user.profile.city && event.city) {
+      const userCoords = getCityCoordinates(user.profile.city);
+      const eventCoords = getCityCoordinates(event.city);
+      if (userCoords && eventCoords) {
+        return calculateDistanceKm(userCoords, eventCoords);
+      }
+    }
+    
+    return null;
+  };
+
   // Filtres
   const filteredEvents = availableEvents.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -57,13 +78,36 @@ const OpportunitiesPage: React.FC = () => {
     return labels[type as keyof typeof labels] || type;
   };
 
+  // Fonction pour obtenir la couleur de la distance
+  const getDistanceColor = (distance: number, mobilityZone: number) => {
+    const ratio = distance / mobilityZone;
+    if (ratio <= 0.5) return 'text-green-400'; // Très proche
+    if (ratio <= 0.8) return 'text-yellow-400'; // Moyennement proche
+    return 'text-orange-400'; // Limite de zone
+  };
+
   return (
     <div className="space-y-6">
       {/* Header avec filtres */}
       <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white mb-2">Opportunités près de toi</h1>
-          <p className="text-gray-400">{filteredEvents.length} événement{filteredEvents.length !== 1 ? 's' : ''} disponible{filteredEvents.length !== 1 ? 's' : ''}</p>
+          <div className="text-gray-400">
+            <p>
+              {filteredEvents.length} événement{filteredEvents.length !== 1 ? 's' : ''} disponible{filteredEvents.length !== 1 ? 's' : ''}
+            </p>
+            {user.userType === 'humoriste' && 'mobilityZone' in user.profile && (
+              <p className="text-sm mt-1">
+                🎯 Zone de mobilité : {user.profile.mobilityZone}km depuis{' '}
+                <span className="text-cyan-400">{user.profile.city}</span>
+                {user.profile.coordinates && (
+                  <span className="text-gray-500 ml-2">
+                    (GPS: {user.profile.coordinates.latitude.toFixed(3)}, {user.profile.coordinates.longitude.toFixed(3)})
+                  </span>
+                )}
+              </p>
+            )}
+          </div>
         </div>
         
         <div className="flex flex-wrap gap-3 w-full lg:w-auto">
@@ -111,61 +155,85 @@ const OpportunitiesPage: React.FC = () => {
             Aucun événement trouvé
           </h3>
           <p className="text-gray-500">
-            Essayez de modifier vos filtres ou revenez plus tard
+            Essayez de modifier vos filtres ou augmentez votre zone de mobilité
           </p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredEvents.map((event, index) => (
-            <motion.div
-              key={event.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <Card className="p-6 bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-all cursor-pointer">
-                <div className="flex items-start justify-between mb-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getEventTypeColor(event.eventType)}`}>
-                    {getEventTypeLabel(event.eventType)}
-                  </span>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-green-400">{event.fee}€</div>
-                    <div className="text-xs text-gray-400">cachet</div>
+          {filteredEvents.map((event, index) => {
+            const distance = calculateEventDistance(event);
+            const mobilityZone = user.userType === 'humoriste' && 'mobilityZone' in user.profile 
+              ? user.profile.mobilityZone 
+              : 50;
+            
+            return (
+              <motion.div
+                key={event.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <Card className="p-6 bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-all cursor-pointer">
+                  <div className="flex items-start justify-between mb-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getEventTypeColor(event.eventType)}`}>
+                      {getEventTypeLabel(event.eventType)}
+                    </span>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-green-400">{event.fee}€</div>
+                      <div className="text-xs text-gray-400">cachet</div>
+                    </div>
                   </div>
-                </div>
-                
-                <h3 className="text-xl font-semibold text-white mb-2">{event.title}</h3>
-                <p className="text-gray-400 text-sm mb-4 line-clamp-2">{event.description}</p>
-                
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center text-sm text-gray-400">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    <span>{new Date(event.date).toLocaleDateString('fr-FR')}</span>
+                  
+                  <h3 className="text-xl font-semibold text-white mb-2">{event.title}</h3>
+                  <p className="text-gray-400 text-sm mb-4 line-clamp-2">{event.description}</p>
+                  
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center text-sm text-gray-400">
+                      <Calendar className="w-4 h-4 mr-2" />
+                      <span>{new Date(event.date).toLocaleDateString('fr-FR')}</span>
+                    </div>
+                    <div className="flex items-center text-sm text-gray-400">
+                      <Clock className="w-4 h-4 mr-2" />
+                      <span>{event.startTime} - {event.endTime}</span>
+                    </div>
+                    <div className="flex items-center text-sm text-gray-400">
+                      <MapPin className="w-4 h-4 mr-2" />
+                      <span>{event.venue}, {event.city}</span>
+                      {event.coordinates && (
+                        <span className="text-xs text-gray-500 ml-1">
+                          (GPS)
+                        </span>
+                      )}
+                    </div>
+                    {distance !== null && (
+                      <div className={`flex items-center text-sm ${getDistanceColor(distance, mobilityZone)}`}>
+                        <Navigation className="w-4 h-4 mr-2" />
+                        <span>
+                          {distance.toFixed(1)}km de chez toi
+                          {distance === 0 && ' (même ville)'}
+                        </span>
+                        <span className="text-xs text-gray-500 ml-2">
+                          ({((distance / mobilityZone) * 100).toFixed(0)}% de votre zone)
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center text-sm text-gray-400">
+                      <Users className="w-4 h-4 mr-2" />
+                      <span>{event.applications.length}/{event.maxPerformers} candidatures</span>
+                    </div>
                   </div>
-                  <div className="flex items-center text-sm text-gray-400">
-                    <Clock className="w-4 h-4 mr-2" />
-                    <span>{event.startTime} - {event.endTime}</span>
-                  </div>
-                  <div className="flex items-center text-sm text-gray-400">
-                    <MapPin className="w-4 h-4 mr-2" />
-                    <span>{event.venue}, {event.city}</span>
-                  </div>
-                  <div className="flex items-center text-sm text-gray-400">
-                    <Users className="w-4 h-4 mr-2" />
-                    <span>{event.applications.length}/{event.maxPerformers} candidatures</span>
-                  </div>
-                </div>
-                
-                <Button 
-                  onClick={() => setSelectedEvent(event.id)}
-                  className="w-full bg-pink-500 hover:bg-pink-600"
-                  disabled={event.applications.length >= event.maxPerformers}
-                >
-                  {event.applications.length >= event.maxPerformers ? 'Complet' : 'Candidater'}
-                </Button>
-              </Card>
-            </motion.div>
-          ))}
+                  
+                  <Button 
+                    onClick={() => setSelectedEvent(event.id)}
+                    className="w-full bg-pink-500 hover:bg-pink-600"
+                    disabled={event.applications.length >= event.maxPerformers}
+                  >
+                    {event.applications.length >= event.maxPerformers ? 'Complet' : 'Candidater'}
+                  </Button>
+                </Card>
+              </motion.div>
+            );
+          })}
         </div>
       )}
 

@@ -1,41 +1,23 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { EventsProvider } from '@/contexts/EventsContext';
-import { DataProvider } from '@/contexts/DataContext';
-import LoginPage from '@/components/auth/LoginPage';
-import SignupPage from '@/components/auth/SignupPage';
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { MyEventsPage } from '@/components/dashboard/MyEventsPage';
-import { EventsPage } from '@/components/dashboard/EventsPage';
-import MyApplicationsPage from '@/components/dashboard/MyApplicationsPage';
-import { ApplicationsPage } from '@/components/dashboard/ApplicationsPage';
-import ProfilePage from '@/components/dashboard/ProfilePage';
-import HumoristeDashboard from '@/components/dashboard/HumoristeDashboard';
-import OrganisateurDashboard from '@/components/dashboard/OrganisateurDashboard';
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { DataProvider } from "@/contexts/DataContext";
+import Index from "./pages/Index";
+import NotFound from "./pages/NotFound";
+import LoginPage from "@/components/auth/LoginPage";
+import SignupPage from "@/components/auth/SignupPage";
+import HumoristeDashboard from "@/components/dashboard/HumoristeDashboard";
+import OrganisateurDashboard from "@/components/dashboard/OrganisateurDashboard";
 
-console.log('MyApplicationsPage:', MyApplicationsPage);
+const queryClient = new QueryClient();
 
-const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+// Composant de redirection basé sur l'authentification
+const DashboardRedirect = () => {
   const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-pink-500/30 border-t-pink-500 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-white">Chargement...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return user ? <>{children}</> : <Navigate to="/login" />;
-};
-
-const OrganizerRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading } = useAuth();
-
+  
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -48,15 +30,17 @@ const OrganizerRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
 
   if (!user) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
-  return user.userType === 'organisateur' ? <>{children}</> : <Navigate to="/dashboard" />;
+  // Redirection vers le bon dashboard
+  return <Navigate to={`/dashboard/${user.userType}`} replace />;
 };
 
-const HumoristRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+// Composant de protection des routes
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-
+  
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -67,100 +51,58 @@ const HumoristRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       </div>
     );
   }
-
+  
   if (!user) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
-
-  return user.userType === 'humoriste' ? <>{children}</> : <Navigate to="/dashboard" />;
+  
+  return <>{children}</>;
 };
 
-const DashboardContent: React.FC = () => {
-  const { user } = useAuth();
-
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
-
-  return user.userType === 'humoriste' ? <HumoristeDashboard /> : <OrganisateurDashboard />;
-};
-
-const App: React.FC = () => {
+const AppContent = () => {
   return (
-    <Router>
-      <AuthProvider>
-        <EventsProvider>
-          <DataProvider>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/signup" element={<SignupPage />} />
-              <Route
-                path="/dashboard"
-                element={
-                  <PrivateRoute>
-                    <DashboardLayout>
-                      <DashboardContent />
-                    </DashboardLayout>
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/dashboard/my-events"
-                element={
-                  <OrganizerRoute>
-                    <DashboardLayout>
-                      <MyEventsPage />
-                    </DashboardLayout>
-                  </OrganizerRoute>
-                }
-              />
-              <Route
-                path="/dashboard/events"
-                element={
-                  <HumoristRoute>
-                    <DashboardLayout>
-                      <EventsPage />
-                    </DashboardLayout>
-                  </HumoristRoute>
-                }
-              />
-              <Route
-                path="/dashboard/applications"
-                element={
-                  <OrganizerRoute>
-                    <DashboardLayout>
-                      <ApplicationsPage />
-                    </DashboardLayout>
-                  </OrganizerRoute>
-                }
-              />
-              <Route
-                path="/dashboard/my-applications"
-                element={
-                  <HumoristRoute>
-                    <DashboardLayout>
-                      <MyApplicationsPage />
-                    </DashboardLayout>
-                  </HumoristRoute>
-                }
-              />
-              <Route
-                path="/dashboard/profile"
-                element={
-                  <PrivateRoute>
-                    <DashboardLayout>
-                      <ProfilePage />
-                    </DashboardLayout>
-                  </PrivateRoute>
-                }
-              />
-              <Route path="/" element={<Navigate to="/dashboard" />} />
-            </Routes>
-          </DataProvider>
-        </EventsProvider>
-      </AuthProvider>
-    </Router>
+    <BrowserRouter>
+      <Routes>
+        {/* Routes publiques */}
+        <Route path="/" element={<Index />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        
+        {/* Redirection générale vers dashboard */}
+        <Route path="/dashboard" element={<DashboardRedirect />} />
+        
+        {/* Dashboards spécifiques */}
+        <Route path="/dashboard/humoriste" element={
+          <ProtectedRoute>
+            <HumoristeDashboard />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/dashboard/organisateur" element={
+          <ProtectedRoute>
+            <OrganisateurDashboard />
+          </ProtectedRoute>
+        } />
+        
+        {/* 404 */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
   );
 };
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <AuthProvider>
+        <DataProvider>
+          <Toaster />
+          <Sonner />
+          <AppContent />
+        </DataProvider>
+      </AuthProvider>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
 export default App;

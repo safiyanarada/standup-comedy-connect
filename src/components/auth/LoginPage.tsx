@@ -68,6 +68,54 @@ const LoginPage: React.FC = () => {
           </p>
         </div>
 
+        {/* Demo credentials */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="mb-6 p-4 bg-blue-500/20 border border-blue-500/30 rounded-lg text-blue-200 text-sm space-y-3"
+        >
+          <div className="font-medium mb-2">🎯 Comptes de démo :</div>
+          
+          <div className="bg-blue-600/20 p-3 rounded">
+            <div className="font-medium text-blue-100 mb-1">🎤 Humoriste</div>
+            <div className="mb-2 text-xs">
+              <div>Email : demo@standup.com</div>
+              <div>Mot de passe : Demo123!</div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setFormData({ email: 'demo@standup.com', password: 'Demo123!' });
+              }}
+              className="w-full text-xs bg-blue-600/20 border-blue-500 hover:bg-blue-600/30"
+            >
+              Connexion rapide humoriste
+            </Button>
+          </div>
+          
+          <div className="bg-purple-600/20 p-3 rounded">
+            <div className="font-medium text-purple-100 mb-1">🏢 Organisateur</div>
+            <div className="mb-2 text-xs">
+              <div>Email : org@standup.com</div>
+              <div>Mot de passe : Org123!</div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setFormData({ email: 'org@standup.com', password: 'Org123!' });
+              }}
+              className="w-full text-xs bg-purple-600/20 border-purple-500 hover:bg-purple-600/30"
+            >
+              Connexion rapide organisateur
+            </Button>
+          </div>
+        </motion.div>
+
         {/* Form */}
         <motion.form 
           onSubmit={handleSubmit} 

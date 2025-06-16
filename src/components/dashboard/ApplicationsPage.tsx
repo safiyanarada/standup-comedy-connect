@@ -1,410 +1,355 @@
-import React, { useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, MapPin, User, CheckCircle, XCircle, AlertCircle, Navigation, Loader2, Euro } from 'lucide-react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Users, Calendar, MapPin, Navigation, CheckCircle, XCircle, Clock, Filter, Eye, MessageSquare, TrendingUp } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
-import type { Application } from '@/types/events';
-import type { HumoristeProfile } from '@/types/auth';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { calculateDistanceKm, getCityCoordinates } from '@/lib/geolocation';
 
-const statusLabels = {
-  pending: 'En attente',
-  viewed: 'Vue',
-  accepted: 'Validé',
-  rejected: 'Refusé',
-};
+const ApplicationsPage: React.FC = () => {
+  const { user } = useAuth();
+  const { getEventsByOrganizer, getUserById, respondToApplication, updateApplicationStatus } = useData();
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [eventFilter, setEventFilter] = useState('all');
 
-export const ApplicationsPage: React.FC = () => {
-  const { user, isAuthenticated, isOrganisateur } = useAuth();
-  const { events, getUserById, isLoading, error, updateApplicationStatus } = useData();
+  if (!user) return null;
 
-  useEffect(() => {
-    console.log('=== INFORMATIONS DE DÉBOGAGE APPLICATIONS PAGE ===');
-    console.log('Utilisateur:', user);
-    console.log('ID Utilisateur:', user?.id);
-    console.log('Type d\'utilisateur:', user?.userType);
-    console.log('Est authentifié:', isAuthenticated);
-    console.log('Est organisateur:', isOrganisateur);
-    console.log('Événements chargés dans ApplicationsPage:', events);
-    console.log('Nombre d\'événements chargés:', events?.length);
-    if (events && events.length > 0) {
-      console.log('IDs des organisateurs:', events.map(e => e?.organizerId));
-    }
-    console.log('Chargement:', isLoading);
-    console.log('Erreur:', error);
-  }, [user, isAuthenticated, isOrganisateur, events, isLoading, error]);
-
-  // Vérification de l'authentification
-  if (!isAuthenticated || !user) {
-    console.log('Non authentifié');
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-4" />
-          <p className="text-red-400 mb-2">Vous devez être connecté</p>
-          <p className="text-gray-400">Veuillez vous connecter pour accéder à cette page</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Vérification du type d'utilisateur
-  if (!isOrganisateur) {
-    console.log('Pas un organisateur');
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-4" />
-          <p className="text-red-400 mb-2">Accès non autorisé</p>
-          <p className="text-gray-400">Cette page est réservée aux organisateurs</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center text-white">
-          <Loader2 className="w-8 h-8 animate-spin text-pink-500 mx-auto mb-4" />
-          <p>Chargement des candidatures...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-4" />
-          <p className="text-red-400 mb-2">Une erreur est survenue</p>
-          <p className="text-gray-400">{error}</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Vérification des événements
-  if (!events || events.length === 0) {
-    console.log('Aucun événement trouvé');
-    return (
-      <div className="p-6">
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold text-white mb-2">Candidatures reçues</h1>
-            <p className="text-gray-400">Gérez les candidatures pour vos événements</p>
-          </div>
-          <Card className="p-12 text-center bg-gray-800/50 border-gray-700">
-            <User className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-300 mb-2">Aucun événement</h3>
-            <p className="text-gray-500">Créez un événement pour recevoir des candidatures</p>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  // Récupérer toutes les candidatures pour les événements de l'organisateur
-  const myEvents = events.filter(e => e?.organizerId === user.id);
-  console.log('Mes événements:', myEvents);
-
-  if (myEvents.length === 0) {
-    console.log('Aucun événement pour cet organisateur');
-    return (
-      <div className="p-6">
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold text-white mb-2">Candidatures reçues</h1>
-            <p className="text-gray-400">Gérez les candidatures pour vos événements</p>
-          </div>
-          <Card className="p-12 text-center bg-gray-800/50 border-gray-700">
-            <User className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-300 mb-2">Aucun événement</h3>
-            <p className="text-gray-500">Créez un événement pour recevoir des candidatures</p>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  const allApplications = myEvents.flatMap(event => {
-    if (!event?.applications) return [];
-    return event.applications.map(app => ({
+  const events = getEventsByOrganizer(user.id);
+  const allApplications = events.flatMap(event => 
+    event.applications.map(app => ({
       ...app,
-      eventTitle: event.title || 'Sans titre',
-      eventId: event.id,
+      eventTitle: event.title,
       eventDate: event.date,
-      eventVenue: event.venue || 'Lieu non spécifié',
-      eventCity: event.location.city || 'Ville non spécifiée',
-      eventTime: event.startTime || 'Horaire non spécifié',
-      eventFee: event.fee || 0,
-    }));
+      eventCity: event.city,
+      eventCoordinates: event.coordinates
+    }))
+  );
+
+  // Marquer comme vue automatiquement
+  useEffect(() => {
+    const pendingApplications = allApplications.filter(app => app.status === 'pending');
+    pendingApplications.forEach(app => {
+      // Marquer comme vue après 1 seconde de visualisation
+      setTimeout(() => {
+        if (app.status === 'pending') {
+          updateApplicationStatus(app.id, 'viewed' as 'accepted' | 'rejected');
+        }
+      }, 1000);
+    });
+  }, [allApplications, updateApplicationStatus]);
+
+  // Statistiques rapides
+  const stats = {
+    total: allApplications.length,
+    pending: allApplications.filter(app => app.status === 'pending').length,
+    accepted: allApplications.filter(app => app.status === 'accepted').length,
+    rejected: allApplications.filter(app => app.status === 'rejected').length,
+    recent: allApplications.filter(app => {
+      const daysDiff = (Date.now() - new Date(app.appliedAt).getTime()) / (1000 * 60 * 60 * 24);
+      return daysDiff <= 7;
+    }).length
+  };
+
+  // Calculer la distance entre l'événement et l'humoriste
+  const calculateApplicationDistance = (application: any): number | null => {
+    const humoriste = getUserById(application.humoristId);
+    
+    if (!humoriste || !application.eventCoordinates) return null;
+    
+    // Si l'humoriste a des coordonnées GPS
+    if (humoriste.profile?.coordinates) {
+      return calculateDistanceKm(humoriste.profile.coordinates, application.eventCoordinates);
+    }
+    
+    // Sinon, calcul basé sur les villes
+    if (humoriste.profile?.city && application.eventCity) {
+      const humoristeCoords = getCityCoordinates(humoriste.profile.city);
+      const eventCoords = getCityCoordinates(application.eventCity);
+      if (humoristeCoords && eventCoords) {
+        return calculateDistanceKm(humoristeCoords, eventCoords);
+      }
+    }
+    
+    return null;
+  };
+
+  // Filtrer les candidatures
+  const filteredApplications = allApplications.filter(app => {
+    const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
+    const matchesEvent = eventFilter === 'all' || app.eventId === eventFilter;
+    return matchesStatus && matchesEvent;
   });
 
-  console.log('Toutes les candidatures (après mappage dans ApplicationsPage):', allApplications);
-
-  if (!allApplications || allApplications.length === 0) {
-    console.log('Aucune candidature trouvée après traitement');
-    return (
-      <div className="p-6">
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold text-white mb-2">Candidatures reçues</h1>
-            <p className="text-gray-400">Gérez les candidatures pour vos événements</p>
-          </div>
-          <Card className="p-12 text-center bg-gray-800/50 border-gray-700">
-            <User className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-300 mb-2">Aucune candidature</h3>
-            <p className="text-gray-500">Les candidatures apparaîtront ici</p>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
-  const handleStatus = async (applicationId: string, status: 'accepted' | 'rejected') => {
-    if (!applicationId) return;
-    try {
-      await updateApplicationStatus(applicationId, status);
-    } catch (error) {
-      console.error('Erreur lors de la mise à jour du statut:', error);
-    }
+  const getStatusColor = (status: string) => {
+    const colors = {
+      'pending': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+      'viewed': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+      'accepted': 'bg-green-500/20 text-green-400 border-green-500/30',
+      'rejected': 'bg-red-500/20 text-red-400 border-red-500/30'
+    };
+    return colors[status as keyof typeof colors] || 'bg-gray-500/20 text-gray-400 border-gray-500/30';
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'accepted':
-        return 'bg-green-500/20 text-green-400 border-green-500/50';
-      case 'rejected':
-        return 'bg-red-500/20 text-red-400 border-red-500/50';
-      case 'viewed':
-        return 'bg-blue-500/20 text-blue-400 border-blue-500/50';
-      default:
-        return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50';
-    }
+  const getStatusText = (status: string) => {
+    const texts = {
+      'pending': 'En attente',
+      'viewed': 'Vue',
+      'accepted': 'Acceptée',
+      'rejected': 'Refusée'
+    };
+    return texts[status as keyof typeof texts] || status;
   };
 
-  const renderApplicationCard = (app: Application & {
-    eventTitle: string;
-    eventId: string;
-    eventDate: string;
-    eventVenue: string;
-    eventCity: string;
-    eventTime: string;
-    eventFee: number;
-  }, index: number) => {
-    if (!app) return null;
+  const handleAccept = (applicationId: string) => {
+    respondToApplication(applicationId, 'accepted');
+  };
 
-    try {
-      const humorist = getUserById(app.humoristId);
-      console.log('Débogage - Humoriste pour la candidature:', app.id, humorist);
-
-      if (!humorist) {
-        console.warn(`Humoriste non trouvé pour l'ID: ${app.humoristId}`);
-        return null;
-      }
-
-      const humoristProfile = humorist.profile as HumoristeProfile;
-      const displayName = humoristProfile?.stageName || 
-                         (humorist?.firstName && humorist?.lastName ? `${humorist.firstName} ${humorist.lastName}` : null) ||
-                         app.stageName || 
-                         app.humoristName || 
-                         "Anonyme";
-      
-      const initial = displayName?.[0] || "?";
-      const mobilityZoneDisplay = humoristProfile?.mobilityZone && humoristProfile.mobilityZone.radius ? `${humoristProfile.mobilityZone.radius} km` : "Non spécifiée";
-      const eventDate = app.eventDate ? new Date(app.eventDate).toLocaleDateString('fr-FR') : 'Date non spécifiée';
-      const appliedDate = app.appliedAt ? new Date(app.appliedAt).toLocaleDateString('fr-FR') : 'Date non spécifiée';
-
-      return (
-        <motion.div
-          key={app.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.1 }}
-        >
-          <Card className="p-6 bg-gray-800/50 border-gray-700">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center space-x-4 mb-4">
-                  {/* Avatar */}
-                  <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full flex items-center justify-center text-white font-bold">
-                    {initial}
-                  </div>
-                  
-                  {/* Info */}
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-white">{displayName}</h3>
-                    <p className="text-gray-400 text-sm">
-                      {humorist.firstName} {humorist.lastName} • {humoristProfile?.location?.city}
-                    </p>
-                    <p className="text-sm text-gray-400">{humorist.email}</p>
-                      <p className="text-sm text-gray-400 flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-phone mr-1"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-3.28-3.28c-1.5-1.5-2.3-3.37-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                      Numéro de téléphone: {humoristProfile?.phone || 'Non spécifié'}
-                      </p>
-                  </div>
-
-                  {/* Status Badge */}
-                  <div className={`px-3 py-1 rounded-full border text-xs font-medium ${getStatusBadge(app.status)}`}>
-                    {app.status === 'accepted' ? 'Accepté' :
-                     app.status === 'rejected' ? 'Refusé' :
-                     app.status === 'viewed' ? 'Vu' : 'En attente'}
-                  </div>
-                </div>
-
-                {/* Bio */}
-                {humoristProfile?.bio && (
-                  <div className="mb-4">
-                    <h4 className="text-sm font-medium text-gray-300 mb-1">Bio</h4>
-                    <p className="text-gray-400 text-sm">{humoristProfile.bio}</p>
-                    </div>
-                )}
-
-                {/* Genres pratiqués */}
-                {humoristProfile?.genres && humoristProfile.genres.length > 0 && (
-                  <div className="mb-4">
-                    <h4 className="text-sm font-medium text-gray-300 mb-1">Genres pratiqués</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {humoristProfile.genres.map(genre => (
-                        <span key={genre} className="px-2 py-1 bg-pink-500/20 text-pink-400 rounded-full text-xs">
-                          {genre}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Informations complémentaires */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center text-sm text-gray-400">
-                      <Navigation className="w-4 h-4 mr-2" />
-                      <span>Zone de mobilité: {mobilityZoneDisplay}</span>
-                    </div>
-                    {humoristProfile?.experienceLevel && (
-                      <div className="flex items-center text-sm text-gray-400">
-                        <User className="w-4 h-4 mr-2" />
-                        <span>Niveau: {humoristProfile.experienceLevel}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Event Info */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                  <div className="flex items-center space-x-2 text-gray-400">
-                    <Calendar className="w-4 h-4" />
-                    <span className="text-sm">{eventDate}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-gray-400">
-                    <Clock className="w-4 h-4" />
-                    <span className="text-sm">{app.eventTime}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-gray-400">
-                    <MapPin className="w-4 h-4" />
-                    <span className="text-sm">{app.eventVenue}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-green-400">
-                    <Euro className="w-4 h-4" />
-                    <span className="text-sm font-medium">{app.eventFee}€</span>
-                  </div>
-                </div>
-
-                {/* Application Message */}
-                {app.message && (
-                  <div className="bg-gray-700/50 rounded-lg p-3 mb-4">
-                    <p className="text-gray-300 text-sm italic">"{app.message}"</p>
-                  </div>
-                )}
-
-                <div className="text-xs text-gray-500">
-                  Candidature reçue le {appliedDate}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-2 mt-4">
-              {app.status === 'pending' && (
-                <>
-                  <Button
-                    onClick={() => handleStatus(app.id, 'accepted')}
-                    className="bg-green-500 hover:bg-green-600"
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Valider
-                  </Button>
-                  <Button
-                    onClick={() => handleStatus(app.id, 'rejected')}
-                    className="bg-red-500 hover:bg-red-600"
-                  >
-                    <XCircle className="w-4 h-4 mr-2" />
-                    Refuser
-                  </Button>
-                </>
-              )}
-            </div>
-          </Card>
-        </motion.div>
-      );
-    } catch (error) {
-      console.error('Erreur lors du rendu de la candidature:', error);
-      return null;
-    }
+  const handleReject = (applicationId: string) => {
+    respondToApplication(applicationId, 'rejected');
   };
 
   return (
-    <div className="p-6">
-      <div className="space-y-6">
+    <div className="space-y-6">
+      {/* Statistiques rapides */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-500/30 rounded-xl p-4"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-200 text-xs font-medium">Total</p>
+              <p className="text-2xl font-bold text-white">{stats.total}</p>
+            </div>
+            <Users className="w-6 h-6 text-blue-400" />
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 rounded-xl p-4"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-yellow-200 text-xs font-medium">En attente</p>
+              <p className="text-2xl font-bold text-white">{stats.pending}</p>
+            </div>
+            <Clock className="w-6 h-6 text-yellow-400" />
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-xl p-4"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-200 text-xs font-medium">Acceptées</p>
+              <p className="text-2xl font-bold text-white">{stats.accepted}</p>
+            </div>
+            <CheckCircle className="w-6 h-6 text-green-400" />
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-gradient-to-r from-red-500/20 to-pink-500/20 border border-red-500/30 rounded-xl p-4"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-red-200 text-xs font-medium">Refusées</p>
+              <p className="text-2xl font-bold text-white">{stats.rejected}</p>
+            </div>
+            <XCircle className="w-6 h-6 text-red-400" />
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 rounded-xl p-4"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-purple-200 text-xs font-medium">Cette semaine</p>
+              <p className="text-2xl font-bold text-white">{stats.recent}</p>
+            </div>
+            <TrendingUp className="w-6 h-6 text-purple-400" />
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white mb-2">Candidatures reçues</h1>
-          <p className="text-gray-400">Gérez les candidatures pour vos événements</p>
+          <p className="text-gray-400">
+            {filteredApplications.length} candidature{filteredApplications.length !== 1 ? 's' : ''} 
+            {statusFilter !== 'all' && ` • ${getStatusText(statusFilter)}`}
+          </p>
         </div>
-
-        <Tabs defaultValue="all" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 bg-gray-800/50">
-            <TabsTrigger value="all" className="data-[state=active]:bg-pink-500">
-              Toutes ({allApplications?.length || 0})
-            </TabsTrigger>
-            <TabsTrigger value="pending" className="data-[state=active]:bg-yellow-500">
-              En attente ({allApplications?.filter(app => app?.status === 'pending').length || 0})
-            </TabsTrigger>
-            <TabsTrigger value="accepted" className="data-[state=active]:bg-green-500">
-              Acceptées ({allApplications?.filter(app => app?.status === 'accepted').length || 0})
-            </TabsTrigger>
-            <TabsTrigger value="rejected" className="data-[state=active]:bg-red-500">
-              Refusées ({allApplications?.filter(app => app?.status === 'rejected').length || 0})
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="all" className="space-y-4 mt-6">
-            <div className="space-y-4">
-              {allApplications.map((app, index) => renderApplicationCard(app, index))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="pending" className="space-y-4 mt-6">
-            <div className="space-y-4">
-              {allApplications?.filter(app => app?.status === 'pending').map((app, index) => renderApplicationCard(app, index))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="accepted" className="space-y-4 mt-6">
-            <div className="space-y-4">
-              {allApplications?.filter(app => app?.status === 'accepted').map((app, index) => renderApplicationCard(app, index))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="rejected" className="space-y-4 mt-6">
-            <div className="space-y-4">
-              {allApplications?.filter(app => app?.status === 'rejected').map((app, index) => renderApplicationCard(app, index))}
-            </div>
-          </TabsContent>
-        </Tabs>
+        
+        {/* Filtres */}
+        <div className="flex flex-wrap gap-3 w-full lg:w-auto">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full lg:w-40 bg-gray-800 border-gray-700 text-white">
+              <SelectValue placeholder="Statut" />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-800 border-gray-700">
+              <SelectItem value="all">Tous les statuts</SelectItem>
+              <SelectItem value="pending">En attente</SelectItem>
+              <SelectItem value="viewed">Vues</SelectItem>
+              <SelectItem value="accepted">Acceptées</SelectItem>
+              <SelectItem value="rejected">Refusées</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select value={eventFilter} onValueChange={setEventFilter}>
+            <SelectTrigger className="w-full lg:w-48 bg-gray-800 border-gray-700 text-white">
+              <SelectValue placeholder="Événement" />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-800 border-gray-700">
+              <SelectItem value="all">Tous les événements</SelectItem>
+              {events.map(event => (
+                <SelectItem key={event.id} value={event.id}>{event.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+
+      {/* Liste des candidatures */}
+      {filteredApplications.length === 0 ? (
+        <Card className="p-12 text-center bg-gray-800/50 border-gray-700">
+          <Users className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-300 mb-2">
+            Aucune candidature trouvée
+          </h3>
+          <p className="text-gray-500">
+            Vous recevrez des candidatures dès que vos événements seront publiés
+          </p>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {filteredApplications.map((application, index) => {
+            const humoriste = getUserById(application.humoristId);
+            const distance = calculateApplicationDistance(application);
+            
+            return (
+              <motion.div
+                key={application.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <Card className="p-6 bg-gray-800/50 border-gray-700 hover:bg-gray-800/70 transition-all">
+                  <div className="flex flex-col lg:flex-row gap-6">
+                    {/* Informations humoriste */}
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">
+                            {application.stageName || application.humoristName}
+                          </h3>
+                          {application.stageName && (
+                            <p className="text-sm text-gray-400">{application.humoristName}</p>
+                          )}
+                        </div>
+                        <Badge className={`px-3 py-1 text-xs font-medium border ${getStatusColor(application.status)}`}>
+                          {getStatusText(application.status)}
+                        </Badge>
+                      </div>
+                      
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center text-sm text-gray-400">
+                          <Calendar className="w-4 h-4 mr-2" />
+                          <span>Pour : {application.eventTitle}</span>
+                        </div>
+                        <div className="flex items-center text-sm text-gray-400">
+                          <Clock className="w-4 h-4 mr-2" />
+                          <span>Candidaté le {new Date(application.appliedAt).toLocaleDateString('fr-FR')}</span>
+                        </div>
+                        {humoriste?.profile?.city && (
+                          <div className="flex items-center text-sm text-gray-400">
+                            <MapPin className="w-4 h-4 mr-2" />
+                            <span>Basé à {humoriste.profile.city}</span>
+                            {humoriste.profile.coordinates && (
+                              <span className="text-xs text-green-400 ml-1">✓ GPS</span>
+                            )}
+                          </div>
+                        )}
+                        {distance !== null && (
+                          <div className="flex items-center text-sm text-cyan-400">
+                            <Navigation className="w-4 h-4 mr-2" />
+                            <span>{distance.toFixed(1)}km de votre événement</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="bg-gray-700/50 p-4 rounded-lg">
+                        <h4 className="text-sm font-medium text-gray-300 mb-2">Message de candidature :</h4>
+                        <p className="text-sm text-gray-400">{application.message}</p>
+                      </div>
+                      
+                      {/* Infos humoriste */}
+                      {humoriste?.profile && (
+                        <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                          <h4 className="text-sm font-medium text-blue-300 mb-2">Profil humoriste :</h4>
+                          {humoriste.userType === 'humoriste' && 'experienceLevel' in humoriste.profile && (
+                            <div className="text-xs text-blue-200 space-y-1">
+                              <p>Niveau : {humoriste.profile.experienceLevel}</p>
+                              {humoriste.profile.mobilityZone && (
+                                <p>Zone de mobilité : {humoriste.profile.mobilityZone}km</p>
+                              )}
+                              {humoriste.profile.genres && (
+                                <p>Genres : {humoriste.profile.genres.join(', ')}</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Actions */}
+                    {application.status === 'pending' && (
+                      <div className="flex lg:flex-col gap-2 lg:w-32">
+                        <Button
+                          onClick={() => handleAccept(application.id)}
+                          className="flex-1 lg:flex-none bg-green-600 hover:bg-green-700"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Accepter
+                        </Button>
+                        <Button
+                          onClick={() => handleReject(application.id)}
+                          variant="outline"
+                          className="flex-1 lg:flex-none border-red-600 text-red-400 hover:bg-red-600/20"
+                        >
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Refuser
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
-}; 
+};
+
+export default ApplicationsPage; 

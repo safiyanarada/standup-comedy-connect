@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, LoginCredentials, SignupData, HumoristeProfile } from '@/types/auth';
+import { User, LoginCredentials, SignupData, HumoristeProfile, OrganisateurProfile } from '@/types/auth';
+import { getCityCoordinates } from '@/lib/geolocation';
 
 interface AuthContextType {
   user: User | null;
-  users: User[];
+  users: User[]; // Add users array
   loading: boolean;
   error: string | null;
   login: (credentials: LoginCredentials) => Promise<void>;
@@ -14,7 +15,6 @@ interface AuthContextType {
   isHumoriste: boolean;
   isOrganisateur: boolean;
   clearError: () => void;
-  token: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -23,73 +23,139 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+// Mock users data
+const mockUsers: User[] = [
+  {
+    id: '1',
+    email: 'demo@standup.com',
+    firstName: 'Demo',
+    lastName: 'User',
+    userType: 'humoriste',
+    profile: {
+      stageName: 'Demo Comic',
+      city: 'Paris',
+      coordinates: getCityCoordinates('Paris'),
+      bio: 'Humoriste passionné de stand-up !',
+      mobilityZone: 50,
+      experienceLevel: 'intermediaire',
+      socialLinks: {
+        instagram: '@democomic',
+        tiktok: '@democomic'
+      },
+      genres: ['observationnel', 'stand-up'],
+      availability: {
+        weekdays: true,
+        weekends: true,
+        evenings: true
+      }
+    },
+    stats: {
+      totalEvents: 25,
+      totalRevenue: 3500,
+      averageRating: 4.7,
+      viralScore: 850,
+      profileViews: 1250,
+      lastActivity: new Date().toISOString()
+    },
+    onboardingCompleted: true,
+    emailVerified: true,
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+    createdAt: '2024-01-01T00:00:00Z',
+    lastLoginAt: new Date().toISOString()
+  },
+  {
+    id: '2',
+    email: 'org@standup.com',
+    firstName: 'Sophie',
+    lastName: 'Martin',
+    userType: 'organisateur',
+    profile: {
+      companyName: 'Comedy Club Paris',
+      city: 'Paris',
+      coordinates: getCityCoordinates('Paris'),
+      description: 'Le meilleur club de comédie de Paris. Nous organisons des soirées stand-up 3 fois par semaine.',
+      website: 'https://comedyclubparis.fr',
+      venueTypes: ['club', 'theatre'],
+      averageBudget: {
+        min: 50,
+        max: 200
+      },
+      eventFrequency: 'weekly'
+    },
+    stats: {
+      totalEvents: 45,
+      totalRevenue: 8500,
+      averageRating: 4.8,
+      viralScore: 920,
+      profileViews: 2100,
+      lastActivity: new Date().toISOString()
+    },
+    onboardingCompleted: true,
+    emailVerified: true,
+    avatarUrl: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+    createdAt: '2024-01-01T00:00:00Z',
+    lastLoginAt: new Date().toISOString()
+  }
+];
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>(() => {
-    const savedUsers = localStorage.getItem('standup_users');
-    return savedUsers ? JSON.parse(savedUsers) : [];
-  });
+  const [users] = useState<User[]>(mockUsers);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('standup_token'));
 
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const storedToken = localStorage.getItem('standup_token');
-        const savedUser = localStorage.getItem('standup_current_user');
-        
-        if (storedToken && savedUser) {
-          const parsedUser = JSON.parse(savedUser);
-          const userExists = users.some(u => u.id === parsedUser.id);
-          if (userExists) {
-            setUser(parsedUser);
-            setToken(storedToken);
-            console.log("User loaded from localStorage:", parsedUser);
-          } else {
-            localStorage.removeItem('standup_token');
-            localStorage.removeItem('standup_current_user');
-            setToken(null);
+        const token = localStorage.getItem('standup_token');
+        const userId = localStorage.getItem('standup_user_id');
+        if (token && userId) {
+          // Simulation d'une vérification de token
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          const savedUser = mockUsers.find(u => u.id === userId);
+          if (savedUser) {
+            setUser(savedUser);
           }
         }
       } catch (err) {
         console.error('Auth init error:', err);
         localStorage.removeItem('standup_token');
-        localStorage.removeItem('standup_current_user');
-        setToken(null);
+        localStorage.removeItem('standup_user_id');
       } finally {
         setLoading(false);
       }
     };
 
     initAuth();
-  }, [users]);
-
-  useEffect(() => {
-    localStorage.setItem('standup_users', JSON.stringify(users));
-  }, [users]);
+  }, []);
 
   const login = async (credentials: LoginCredentials) => {
     try {
       setLoading(true);
       setError(null);
 
-      const foundUser = users.find(u => u.email === credentials.email);
+      // Simulation d'une connexion
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      if (!foundUser) {
+      // Vérifier les identifiants pour les comptes de test
+      let userToLogin = null;
+      
+      if (credentials.email === 'demo@standup.com' && credentials.password === 'Demo123!') {
+        userToLogin = mockUsers.find(u => u.email === 'demo@standup.com');
+      } else if (credentials.email === 'org@standup.com' && credentials.password === 'Org123!') {
+        userToLogin = mockUsers.find(u => u.email === 'org@standup.com');
+      } else {
+        throw new Error('Identifiants incorrects');
+      }
+
+      if (userToLogin) {
+        const token = 'token_' + Date.now();
+        localStorage.setItem('standup_token', token);
+        localStorage.setItem('standup_user_id', userToLogin.id);
+        setUser(userToLogin);
+      } else {
         throw new Error('Utilisateur non trouvé');
       }
-
-      if (foundUser.password !== credentials.password) {
-        throw new Error('Mot de passe incorrect');
-      }
-
-      const newToken = 'token_' + Date.now();
-      localStorage.setItem('standup_token', newToken);
-      localStorage.setItem('standup_current_user', JSON.stringify(foundUser));
-      setUser(foundUser);
-      setToken(newToken);
-      console.log("User after successful login:", foundUser);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur de connexion');
@@ -104,58 +170,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
 
-      if (users.some(u => u.email === data.email)) {
-        throw new Error('Cet email est déjà utilisé');
-      }
-
+      // Simulation d'une inscription
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
       const newUser: User = {
-        id: 'user_' + Date.now(),
+        ...mockUsers[0],
+        id: 'new_' + Date.now(),
         email: data.email,
-        password: data.password,
         firstName: data.firstName,
         lastName: data.lastName,
         userType: data.userType,
         onboardingCompleted: false,
-        emailVerified: false,
-        stats: {
-          totalEvents: 0,
-          totalRevenue: 0,
-          averageRating: 0,
-          viralScore: 0,
-          profileViews: 0,
-          lastActivity: new Date().toISOString()
-        },
         profile: data.userType === 'humoriste' ? {
           stageName: data.stageName,
-          location: data.location,
+          city: data.city,
+          coordinates: getCityCoordinates(data.city),
           bio: '',
-          mobilityZone: { radius: 30 },
+          mobilityZone: 30,
           experienceLevel: 'debutant',
           genres: [],
           availability: {
             weekdays: false,
             weekends: false,
             evenings: false
-          },
-          phone: data.phone
+          }
         } : {
           companyName: data.companyName,
-          location: data.location,
+          city: data.city,
+          coordinates: getCityCoordinates(data.city),
           description: '',
           venueTypes: [],
           eventFrequency: 'monthly'
-        },
-        createdAt: new Date().toISOString(),
-        lastLoginAt: new Date().toISOString()
+        }
       };
 
-      setUsers(prev => [...prev, newUser]);
-      
-      const newToken = 'token_' + Date.now();
-      localStorage.setItem('standup_token', newToken);
-      localStorage.setItem('standup_current_user', JSON.stringify(newUser));
+      const token = 'new_token_' + Date.now();
+      localStorage.setItem('standup_token', token);
       setUser(newUser);
-      setToken(newToken);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de l\'inscription');
@@ -167,72 +218,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('standup_token');
-    localStorage.removeItem('standup_current_user');
+    localStorage.removeItem('standup_user_id');
     setUser(null);
-    setToken(null);
   };
 
   const updateProfile = async (profileData: any): Promise<User> => {
     try {
       if (!user) throw new Error('Utilisateur non connecté');
       
-      const updatedProfile = { ...user.profile };
-
-      if (user.userType === 'humoriste') {
-        const humoristeProfile = updatedProfile as HumoristeProfile;
-        if (profileData.mobilityZone !== undefined) {
-          if (typeof profileData.mobilityZone === 'number') {
-            humoristeProfile.mobilityZone = { radius: Math.max(1, profileData.mobilityZone) };
-          } else if (typeof profileData.mobilityZone === 'object' && profileData.mobilityZone !== null && typeof profileData.mobilityZone.radius === 'number') {
-            humoristeProfile.mobilityZone = { ...humoristeProfile.mobilityZone, radius: Math.max(1, profileData.mobilityZone.radius) };
-          } else {
-            humoristeProfile.mobilityZone = { radius: 30 };
-          }
-        } else if (!humoristeProfile.mobilityZone?.radius) {
-          humoristeProfile.mobilityZone = { radius: 30 };
-        }
-      }
-
-      const { mobilityZone, ...restProfileData } = profileData;
-
-      Object.assign(updatedProfile, restProfileData);
-
-      const updatedUser: User = {
+      // Simulation d'une mise à jour
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const updatedUser = {
         ...user,
-        profile: updatedProfile,
+        profile: { ...user.profile, ...profileData },
+        onboardingCompleted: true
       };
-
-      setUsers(prevUsers => prevUsers.map(u => (u.id === updatedUser.id ? updatedUser : u)));
-      localStorage.setItem('standup_current_user', JSON.stringify(updatedUser));
+      
       setUser(updatedUser);
-
       return updatedUser;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour du profil');
+      setError(err instanceof Error ? err.message : 'Erreur de mise à jour');
       throw err;
     }
   };
-
-  const isAuthenticated = !!user && !!token;
-  const isHumoriste = isAuthenticated && user?.userType === 'humoriste';
-  const isOrganisateur = isAuthenticated && user?.userType === 'organisateur';
 
   const clearError = () => setError(null);
 
   const value: AuthContextType = {
     user,
-    users,
+    users, // Add users to the context value
     loading,
     error,
     login,
     signup,
     logout,
     updateProfile,
-    isAuthenticated,
-    isHumoriste,
-    isOrganisateur,
-    clearError,
-    token,
+    isAuthenticated: !!user,
+    isHumoriste: user?.userType === 'humoriste',
+    isOrganisateur: user?.userType === 'organisateur',
+    clearError
   };
 
   return (
@@ -245,7 +270,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
 };

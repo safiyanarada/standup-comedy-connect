@@ -1,7 +1,8 @@
+import { Coordinates } from '@/lib/geolocation';
+
 export interface User {
   id: string;
   email: string;
-  password: string;
   firstName: string;
   lastName: string;
   userType: 'humoriste' | 'organisateur';
@@ -14,22 +15,12 @@ export interface User {
   lastLoginAt: string;
 }
 
-export interface Location {
-  city: string;
-  postalCode: string;
-  address?: string;
-  latitude?: number;
-  longitude?: number;
-}
-
 export interface HumoristeProfile {
   stageName?: string;
-  location: Location;
+  city: string;
+  coordinates?: Coordinates;
   bio?: string;
-  mobilityZone: {
-    radius: number; // en kilomètres
-    preferredCities?: string[]; // villes préférées pour les performances
-  };
+  mobilityZone: number;
   experienceLevel: 'debutant' | 'intermediaire' | 'expert';
   socialLinks?: {
     instagram?: string;
@@ -41,14 +32,17 @@ export interface HumoristeProfile {
     weekends: boolean;
     evenings: boolean;
   };
-  phone?: string;
 }
 
 export interface OrganisateurProfile {
   companyName?: string;
-  location: Location;
+  city: string;
+  coordinates?: Coordinates;
   description?: string;
   website?: string;
+  phone?: string;
+  venueAddress?: string;
+  venuePostalCode?: string;
   venueTypes: string[];
   averageBudget?: {
     min: number;
@@ -78,7 +72,8 @@ export interface SignupData {
   lastName: string;
   phone?: string;
   userType: 'humoriste' | 'organisateur';
-  location: Location;
+  city: string;
+  coordinates?: Coordinates;
   stageName?: string;
   companyName?: string;
 }
